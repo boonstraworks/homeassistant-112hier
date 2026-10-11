@@ -2,6 +2,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
 [![Laatste versie](https://img.shields.io/github/v/release/stevenb211/homeassistant-112hier?label=versie)](https://github.com/stevenb211/homeassistant-112hier/releases)
+[![Steun op Ko-fi](https://img.shields.io/badge/Ko--fi-steun%20112hier-72A4F2?logo=ko-fi&logoColor=white)](https://ko-fi.com/112hier)
 
 Live 112-meldingen van brandweer, ambulance, politie en KNRM in Home Assistant,
 met de gegevens van [112hier.nl](https://112hier.nl). Plus een seintje als er
@@ -272,6 +273,14 @@ De integratie leest [`https://112hier.nl/feed.json`](https://112hier.nl/feed.jso
 Die is vrij te gebruiken, ook zonder Home Assistant: geen sleutel, geen account,
 maximaal 30 verzoeken per minuut. Documentatie op
 [112hier.nl/feed](https://112hier.nl/feed).
+
+## Steun 112hier
+
+De integratie en de site zijn gratis en blijven dat, zonder reclame bij
+spoedmeldingen. De ontvanger, de server en de stroom kosten wel geld. Vind je
+het handig, dan help je met een kopje koffie om alles draaiende te houden.
+
+[![Steun 112hier op Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/112hier)
 
 ## Licentie
 

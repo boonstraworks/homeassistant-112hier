@@ -2,5 +2,8 @@
   "name": "112hier — 112-meldingen",
   "content_in_root": false,
   "render_readme": true,
+  "country": [
+    "NL"
+  ],
   "homeassistant": "2024.8.0"
 }
