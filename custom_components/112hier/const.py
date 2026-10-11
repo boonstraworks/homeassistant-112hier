@@ -38,6 +38,12 @@ CONF_NEGEER_CAPCODES = "negeer_capcodes"
 # Binnen hoeveel kilometer een spoedmelding de schakelaar "spoed in de buurt"
 # aan mag zetten. 0 = alles wat door je filters komt telt mee.
 CONF_SPOED_STRAAL = "spoed_straal"
+# Mensen denken in provincies en gemeenten, niet in veiligheidsregio's.
+CONF_PROVINCIES = "provincies"
+CONF_GEMEENTEN = "gemeenten"
+# Zoekveld in het instelscherm: "Alkmaar" → kies je pagers uit een lijst.
+CONF_POST_ZOEKEN = "post_zoeken"
+POSTEN_PAD = "/api/posten"
 
 # Urgenties die als spoed tellen. A0 is de hoogste ambulance-urgentie en hoort
 # er dus bij — die ontbrak lang in dit soort lijstjes omdat hij zeldzaam is.
@@ -60,5 +66,8 @@ EVENT_MELDING = "112hier_melding"
 # Bij elk nieuw NL-Alert (en bij herhaling of opheffing). Met "voor_jou": true
 # als je huis binnen het uitzendgebied ligt.
 EVENT_NL_ALERT = "112hier_nl_alert"
+# Als een incident in je gebied ontstaat of groter wordt ("opgeschaald").
+EVENT_INCIDENT = "112hier_incident"
+NIVEAU_ORDE = {"klein": 1, "middel": 2, "groot": 3}
 
 ATTRIBUTIE = "Gegevens van 112hier.nl"

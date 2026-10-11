@@ -20,10 +20,12 @@ from .const import (
     CONF_CAPCODES,
     CONF_BASIS,
     CONF_DIENSTEN,
+    CONF_GEMEENTEN,
     CONF_INTERVAL,
     CONF_NEGEER,
     CONF_NEGEER_CAPCODES,
     CONF_PLAATS,
+    CONF_PROVINCIES,
     CONF_REGIOS,
     CONF_STRAAL,
     DEFAULT_BASIS,
@@ -31,6 +33,7 @@ from .const import (
     MIN_INTERVAL_SECONDEN,
 )
 from .coordinator import HierCoordinator
+from .filters import Filter, lijst
 from .nlalert import NlAlertCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,10 +46,6 @@ PLATFORMS: list[Platform] = [
 
 KAART_URL = "/112hier/card-112hier.js"
 
-
-def _lijst(waarde) -> list[str]:
-    """Komma-gescheiden invoer opknippen; lege stukken eruit."""
-    return [deel.strip() for deel in str(waarde or "").split(",") if deel.strip()]
 
 
 async def _zorg_voor_kaart(hass: HomeAssistant) -> None:
@@ -117,25 +116,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     straal = float(inst.get(CONF_STRAAL) or 0)
     punt = None
-    if straal and inst.get("lat") is not None and inst.get("lon") is not None:
-        punt = (float(inst["lat"]), float(inst["lon"]))
+    if straal:
+        if inst.get("lat") is not None and inst.get("lon") is not None:
+            punt = (float(inst["lat"]), float(inst["lon"]))
+        elif hass.config.latitude is not None and hass.config.longitude is not None:
+            # Een straal zonder versleept punt verdween vroeger stil uit het
+            # verzoek, en dan kreeg je heel Nederland terwijl de naam "20 km
+            # rond je punt" zei. Zonder punt rekenen we vanaf je huis.
+            punt = (hass.config.latitude, hass.config.longitude)
 
     seconden = max(MIN_INTERVAL_SECONDEN, int(inst.get(CONF_INTERVAL) or 30))
+    integratie = await async_get_integration(hass, DOMAIN)
 
     coordinator = HierCoordinator(
         hass,
         basis=inst.get(CONF_BASIS) or DEFAULT_BASIS,
         interval=timedelta(seconds=seconden),
-        regios=inst.get(CONF_REGIOS) or [],
-        diensten=inst.get(CONF_DIENSTEN) or [],
-        plaats=(inst.get(CONF_PLAATS) or "").strip().lower().replace(" ", "-") or None,
-        punt=punt,
-        straal=straal or None,
-        alleen_spoed=bool(inst.get(CONF_ALLEEN_SPOED)),
-        capcodes=_lijst(inst.get(CONF_CAPCODES)),
-        bevat=_lijst(inst.get(CONF_BEVAT)),
-        negeer=_lijst(inst.get(CONF_NEGEER)),
-        negeer_capcodes=_lijst(inst.get(CONF_NEGEER_CAPCODES)),
+        filter_=Filter(
+            regios=inst.get(CONF_REGIOS) or [],
+            provincies=inst.get(CONF_PROVINCIES) or [],
+            gemeenten=inst.get(CONF_GEMEENTEN) or [],
+            diensten=inst.get(CONF_DIENSTEN) or [],
+            plaats=(inst.get(CONF_PLAATS) or "").strip().lower().replace(" ", "-") or None,
+            punt=punt,
+            straal=straal or None,
+            alleen_spoed=bool(inst.get(CONF_ALLEEN_SPOED)),
+            capcodes=lijst(inst.get(CONF_CAPCODES)),
+            bevat=lijst(inst.get(CONF_BEVAT)),
+            negeer=lijst(inst.get(CONF_NEGEER)),
+            negeer_capcodes=lijst(inst.get(CONF_NEGEER_CAPCODES)),
+        ),
+        # Met versie: zo ziet 112hier hoeveel installaties nog een oude versie draaien.
+        user_agent=f"homeassistant-112hier/{integratie.version}",
     )
 
     await coordinator.async_config_entry_first_refresh()
@@ -145,7 +157,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # NL-Alert loopt naast de meldingen. Een fout of een oudere 112hier zonder
     # NL-Alert mag het opzetten niet tegenhouden: dan blijven die twee entiteiten
     # gewoon leeg.
-    nla = NlAlertCoordinator(hass, inst.get(CONF_BASIS) or DEFAULT_BASIS)
+    nla = NlAlertCoordinator(
+        hass, inst.get(CONF_BASIS) or DEFAULT_BASIS, user_agent=f"homeassistant-112hier/{integratie.version}"
+    )
     await nla.async_refresh()
     hass.data.setdefault(f"{DOMAIN}_nla", {})[entry.entry_id] = nla
     await _zorg_voor_kaart(hass)

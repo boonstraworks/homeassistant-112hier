@@ -12,7 +12,8 @@ blueprint:
 
     Werkt met de schakelaar "NL-Alert voor jouw locatie" van de
     112hier-integratie. "Jouw huis" is de locatie uit de Home
-    Assistant-instellingen.
+    Assistant-instellingen. Het landelijke testbericht (juni en december)
+    zet de schakelaar niet aan.
   domain: automation
   source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/nl_alert_thuis.yaml
   author: 112hier.nl
@@ -29,7 +30,7 @@ blueprint:
 
     waarheen:
       name: Waar naartoe
-      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_steven. Leeg laten = geen bericht.
+      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_jan. Leeg laten = geen bericht.
       default: ""
       selector:
         text:
@@ -54,9 +55,11 @@ blueprint:
 mode: queued
 
 trigger:
+  # Zonder "from": ook "onbekend" of "niet beschikbaar" → "aan" telt mee.
+  # Begint een alert net als 112hier even niet bereikbaar was, dan mis je het
+  # anders. Alleen een wijziging van de stand telt, niet van de details.
   - platform: state
     entity_id: !input schakelaar
-    from: "off"
     to: "on"
     id: aan
   - platform: state
@@ -64,6 +67,12 @@ trigger:
     from: "on"
     to: "off"
     id: uit
+  # Begon het alert terwijl Home Assistant herstartte, dan ging de schakelaar
+  # van "onbekend" naar "aan" en vuurde de trigger hierboven niet. Na het
+  # opstarten kijken we daarom één keer of er een alert actief is.
+  - platform: homeassistant
+    event: start
+    id: start
 
 variables:
   waarheen: !input waarheen
@@ -74,8 +83,26 @@ variables:
 action:
   - choose:
       - conditions:
-          - condition: trigger
-            id: aan
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: aan
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: start
+                  - condition: state
+                    entity_id: !input schakelaar
+                    state: "on"
+          # Dit alert nog niet afgehandeld? Na een herstart midden in een alert
+          # dat je al kreeg, komt er geen tweede bericht en gaat wat je zelf
+          # weer aanzette niet opnieuw uit.
+          - condition: template
+            value_template: >-
+              {% set st = state_attr(schakelaar, 'start') %}
+              {% set begin = as_datetime(st) if st else none %}
+              {% set vorige = this.attributes.last_triggered if this is defined and this.attributes is defined else none %}
+              {{ vorige is none or begin is none or begin > vorige }}
         sequence:
           - if:
               - condition: template
@@ -84,6 +111,11 @@ action:
               - action: homeassistant.turn_off
                 target:
                   entity_id: "{{ uitzetten }}"
+              # Even wachten tot het ook echt uit staat; een apparaat dat net
+              # offline is, wordt door Home Assistant stil overgeslagen.
+              - wait_template: "{{ uitzetten | reject('is_state', 'off') | list | count == 0 }}"
+                timeout: "00:01:00"
+                continue_on_timeout: true
           - if:
               - condition: template
                 value_template: "{{ waarheen | length > 0 }}"
@@ -94,7 +126,8 @@ action:
                   message: >-
                     {{ state_attr(schakelaar, 'kop') }}.
                     {% set a = state_attr(schakelaar, 'adviezen') or [] %}{% if a %}Advies: {{ a | join(', ') | lower }}.{% endif %}
-                    {% if uitzetten | length > 0 %}De ventilatie is uitgezet.{% endif %}
+                    {% set nog_aan = uitzetten | reject('is_state', 'off') | list %}
+                    {% if uitzetten | length > 0 %}{% if nog_aan %}Let op: uitzetten is niet gelukt voor {{ nog_aan | map('state_attr', 'friendly_name') | join(', ') }}; zet dit zelf uit.{% else %}De ventilatie is uitgezet.{% endif %}{% endif %}
                   data:
                     url: "{{ state_attr(schakelaar, 'url') }}"
                     clickAction: "{{ state_attr(schakelaar, 'url') }}"

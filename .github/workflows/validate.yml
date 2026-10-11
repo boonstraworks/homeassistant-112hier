@@ -21,3 +21,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: home-assistant/actions/hassfest@master
+
+  # De filterregels: wat er doorkomt en waarom. Zonder Home Assistant, dus snel.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install pytest
+      - run: pytest -q tests

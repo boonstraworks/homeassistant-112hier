@@ -3,14 +3,17 @@
     "step": {
       "user": {
         "title": "Follow 112 dispatches",
-        "description": "Pick what you want to hear about. Leave everything empty and you get the whole of the Netherlands — that is hundreds a day. Capcodes for your own station are listed on 112hier.nl/alerts; calls for those always come through. The keyword fields accept * and ?, for example *Epe*.",
+        "description": "Pick what you want to hear about: a province, safety region, municipality or a point on the map. Leave everything empty and you get the whole of the Netherlands — about 4,000 dispatches a day. Search your own station by name; calls for it always come through, even outside your area. The keyword fields accept * and ?, for example *Epe*.",
         "data": {
+          "provincies": "Provinces",
           "regios": "Safety regions",
+          "gemeenten": "Municipalities",
           "diensten": "Services",
           "plaats": "Town or city (optional)",
-          "punt": "Or a point on the map",
+          "punt": "Point on the map",
           "straal": "Radius around that point",
           "alleen_spoed": "Urgent only (A0, A1, P 1, PRIO 1)",
+          "post_zoeken": "Find your station (for example Alkmaar or Tankautospuit Haarlem)",
           "interval": "How often to check",
           "basis": "Feed address",
           "capcodes": "Follow your own station (capcodes, comma separated)",
@@ -18,12 +21,30 @@
           "negeer": "Never show if the message contains this (for example: testoproep)",
           "negeer_capcodes": "Never show for these capcodes (comma separated)",
           "spoed_straal": "Urgent nearby: within how many km"
+        },
+        "data_description": {
+          "provincies": "A province is a set of safety regions; no need to pick those separately.",
+          "straal": "0 = no radius. The point defaults to your home.",
+          "post_zoeken": "After saving you get a list of that station's pagers to tick.",
+          "capcodes": "Always come through, even outside your area and outside the services you picked."
+        }
+      },
+      "post": {
+        "title": "Pick your station",
+        "description": "Tick the pagers you want to follow. Their calls always come through, even outside your area.",
+        "data": {
+          "posten": "Pagers"
         }
       }
     },
     "error": {
       "geen_verbinding": "Could not reach the feed. Is the address correct, and does Home Assistant have internet?",
-      "geen_feed": "This address answers, but it is not a 112hier feed."
+      "geen_feed": "This address answers, but it is not a 112hier feed.",
+      "geen_posten": "No station found by that name. Try a town name, or a word like Tankautospuit.",
+      "posten_fout": "Searching failed just now. Try again later, or enter the capcodes yourself.",
+      "ongeldige_capcode": "This is not a capcode (5 to 10 digits). Better search your station by name with \"Find your station\".",
+      "te_veel_capcodes": "Too many capcodes: the feed takes at most 40. Pick fewer pagers.",
+      "gemeente_buiten_gebied": "This municipality lies outside the province or region you picked, so nothing would ever come through. Pick one or the other."
     }
   },
   "options": {
@@ -31,12 +52,15 @@
       "init": {
         "title": "Change settings",
         "data": {
+          "provincies": "Provinces",
           "regios": "Safety regions",
+          "gemeenten": "Municipalities",
           "diensten": "Services",
           "plaats": "Town or city (optional)",
-          "punt": "Or a point on the map",
+          "punt": "Point on the map",
           "straal": "Radius around that point",
           "alleen_spoed": "Urgent only (A0, A1, P 1, PRIO 1)",
+          "post_zoeken": "Find your station (for example Alkmaar or Tankautospuit Haarlem)",
           "interval": "How often to check",
           "basis": "Feed address",
           "capcodes": "Follow your own station (capcodes, comma separated)",
@@ -44,8 +68,28 @@
           "negeer": "Never show if the message contains this (for example: testoproep)",
           "negeer_capcodes": "Never show for these capcodes (comma separated)",
           "spoed_straal": "Urgent nearby: within how many km"
+        },
+        "data_description": {
+          "provincies": "A province is a set of safety regions; no need to pick those separately.",
+          "straal": "0 = no radius. The point defaults to your home.",
+          "post_zoeken": "After saving you get a list of that station's pagers to tick.",
+          "capcodes": "Always come through, even outside your area and outside the services you picked."
+        }
+      },
+      "post": {
+        "title": "Pick your station",
+        "description": "Tick the pagers you want to follow. They are added to the capcodes you already had.",
+        "data": {
+          "posten": "Pagers"
         }
       }
+    },
+    "error": {
+      "geen_posten": "No station found by that name. Try a town name, or a word like Tankautospuit.",
+      "posten_fout": "Searching failed just now. Try again later, or enter the capcodes yourself.",
+      "ongeldige_capcode": "This is not a capcode (5 to 10 digits). Better search your station by name with \"Find your station\".",
+      "te_veel_capcodes": "Too many capcodes: the feed takes at most 40. Pick fewer pagers.",
+      "gemeente_buiten_gebied": "This municipality lies outside the province or region you picked, so nothing would ever come through. Pick one or the other."
     }
   },
   "entity": {
@@ -55,6 +99,9 @@
       },
       "aantal": {
         "name": "Dispatches kept"
+      },
+      "laatste_incident": {
+        "name": "Latest incident"
       },
       "laatste_nl_alert": {
         "name": "Latest NL-Alert"
@@ -66,6 +113,9 @@
       },
       "nl_alert_thuis": {
         "name": "NL-Alert for your location"
+      },
+      "ontvangst": {
+        "name": "112hier reception"
       }
     }
   }

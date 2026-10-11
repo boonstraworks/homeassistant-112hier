@@ -19,6 +19,7 @@
  *   entity: sensor.112_haaglanden_meldingen_bewaard
  *   aantal: 8            (optioneel, standaard 8)
  *   alleen_spoed: false  (optioneel)
+ *   reden: true          (optioneel; grijs regeltje "waarom zie ik deze?")
  *   titel: "112 in de buurt"  (optioneel)
  */
 
@@ -66,9 +67,12 @@ class HierCard extends HTMLElement {
     if (!config.entity) {
       throw new Error('Kies de sensor "Meldingen bewaard" van 112hier.');
     }
-    this._config = { aantal: 8, alleen_spoed: false, ...config };
+    this._config = { aantal: 8, alleen_spoed: false, reden: true, ...config };
     this._vorigeSleutel = null;
+    this._vorigeStaat = undefined;
     if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
+    // Een gewijzigde configuratie (bijvoorbeeld in de editor) meteen tonen.
+    if (this._hass) this._teken();
   }
 
   getCardSize() {
@@ -76,11 +80,22 @@ class HierCard extends HTMLElement {
   }
 
   set hass(hass) {
+    // Home Assistant zet `hass` opnieuw bij élke statuswijziging in het hele
+    // huis — een lamp, een temperatuur. Alleen als onze eigen sensor een nieuw
+    // object is, is er iets voor deze kaart veranderd. Zonder deze check werd
+    // de lijst steeds opnieuw opgebouwd: hij knipperde, een hover verdween en
+    // een klik op een wandtablet kwam soms niet aan.
+    const staat = this._config ? hass.states[this._config.entity] : undefined;
+    const eerder = this._hass;
     this._hass = hass;
+    if (eerder && staat === this._vorigeStaat) return;
+    this._vorigeStaat = staat;
     this._teken();
   }
 
   connectedCallback() {
+    // Terug op deze weergave: de tijden meteen bijwerken, niet pas over 30 s.
+    this._teken(true);
     // De tijden ("4 min") lopen anders pas door als er een nieuwe melding komt.
     this._tik = setInterval(() => this._teken(true), 30000);
   }
@@ -99,13 +114,34 @@ class HierCard extends HTMLElement {
       return;
     }
 
-    let meldingen = staat.attributes.meldingen || [];
+    // Kan Home Assistant 112hier niet bereiken, dan heeft de sensor geen
+    // attributen. Dat is geen "rustig": we tonen dan de laatst bekende lijst met
+    // een waarschuwing erboven.
+    const onbereikbaar = ['unavailable', 'unknown'].includes(staat.state);
+    let alle = staat.attributes.meldingen;
+    if (onbereikbaar || !alle) alle = this._laatsteMeldingen || [];
+    else this._laatsteMeldingen = alle;
+
+    // Het nieuwste aantal oproepen per incident. Oudere rijen van hetzelfde
+    // incident hadden anders nog de stand van toen ze binnenkwamen.
+    this._actueel = {};
+    for (const m of alle) {
+      const i = m.incident;
+      if (i && i.id != null && !(i.id in this._actueel)) this._actueel[i.id] = i;
+    }
+
+    let meldingen = alle;
     if (this._config.alleen_spoed) meldingen = meldingen.filter((m) => m.spoed);
     meldingen = meldingen.slice(0, this._config.aantal);
 
     // Alleen opnieuw opbouwen als er werkelijk iets veranderd is; anders
     // knippert de kaart elke keer dat Home Assistant een update stuurt.
-    const sleutel = meldingen.map((m) => m.id).join(',');
+    const ontvanger = onbereikbaar ? null : (staat.attributes.ontvanger || null);
+    const storing = !!(ontvanger && ontvanger.storing);
+    const sleutel = meldingen.map((m) => {
+      const i = m.incident && this._actueel[m.incident.id];
+      return `${m.id}:${(i && i.oproepen) || ''}`;
+    }).join(',') + (storing ? '|storing' : '') + (onbereikbaar ? '|weg' : '');
     if (alleenTijden && sleutel === this._vorigeSleutel) {
       this.shadowRoot.querySelectorAll('.tijd').forEach((el) => {
         el.textContent = geleden(el.dataset.tijd);
@@ -115,15 +151,28 @@ class HierCard extends HTMLElement {
     this._vorigeSleutel = sleutel;
 
     const titel = this._config.titel || this._naam(staat);
+    // Bij een storing is "niets binnengekomen" niet hetzelfde als "rustig".
+    const leeg = onbereikbaar
+      ? 'Home Assistant kan 112hier nu niet bereiken.'
+      : storing
+        ? 'Er komt nu niets binnen: de ontvanger van 112hier heeft storing.'
+        : 'Rustig op dit moment. Er is nog niets binnengekomen dat aan je filters voldoet.';
     const rijen = meldingen.length
       ? meldingen.map((m) => this._rij(m)).join('')
-      : '<div class="leeg">Rustig op dit moment. Er is nog niets binnengekomen dat aan je filters voldoet.</div>';
+      : `<div class="leeg">${leeg}</div>`;
+    let waarschuwing = '';
+    if (onbereikbaar) {
+      waarschuwing = '<div class="storing">Geen verbinding met 112hier. Er kunnen meldingen ontbreken.</div>';
+    } else if (storing) {
+      waarschuwing = `<div class="storing">Ontvanger heeft storing${ontvanger.storing_sinds ? ` sinds ${veilig(this._klok(ontvanger.storing_sinds))}` : ''}. Er kunnen meldingen ontbreken.</div>`;
+    }
 
     this.shadowRoot.innerHTML = this._omhulsel(`
       <div class="kop">
         <span class="naam">${veilig(titel)}</span>
         <span class="telling">${meldingen.length}</span>
       </div>
+      ${waarschuwing}
       <div class="lijst">${rijen}</div>
     `);
 
@@ -148,10 +197,25 @@ class HierCard extends HTMLElement {
       || '112-meldingen';
   }
 
+  /** "21:14", of "ma 12 okt 21:14" als het niet vandaag was. Een storing kan dagen duren. */
+  _klok(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const vandaag = d.toDateString() === new Date().toDateString();
+    return vandaag
+      ? d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
   _rij(m) {
     const kleur = KLEUR[m.dienst] || '#64748b';
     const plek = [m.straat, m.plaats].filter(Boolean).join(', ');
     const afstand = m.afstand_km != null ? `${m.afstand_km} km` : '';
+    // Zes oproepen voor één brand: dat zie je hier aan "6 oproepen", met de
+    // nieuwste stand van het incident.
+    const actueel = m.incident && this._actueel ? (this._actueel[m.incident.id] || m.incident) : m.incident;
+    const inc = actueel && actueel.oproepen > 1 ? actueel : null;
+    const incLabel = inc ? `${inc.oproepen} oproepen${inc.niveau === 'groot' ? ' · grote inzet' : ''}` : '';
     return `
       <div class="rij${m.spoed ? ' spoed' : ''}" data-url="${veilig(m.url || '')}">
         <span class="streep" style="background:${kleur}"></span>
@@ -164,7 +228,9 @@ class HierCard extends HTMLElement {
             ${plek ? `<span>${veilig(plek)}</span>` : ''}
             ${afstand ? `<span class="punt">·</span><span>${veilig(afstand)}</span>` : ''}
             ${m.regio ? `<span class="punt">·</span><span>${veilig(m.regio)}</span>` : ''}
+            ${incLabel ? `<span class="inc${inc.niveau === 'groot' ? ' groot' : ''}" title="${veilig(inc.samenvatting || '')}">${veilig(incLabel)}</span>` : ''}
           </div>
+          ${this._config.reden && m.reden ? `<div class="reden">${veilig(m.reden)}</div>` : ''}
         </div>
         <span class="tijd" data-tijd="${veilig(m.tijd || '')}">${geleden(m.tijd)}</span>
       </div>`;
@@ -214,6 +280,20 @@ class HierCard extends HTMLElement {
           padding-top: 2px; white-space: nowrap;
         }
         .spoed .tekst { font-weight: 600; }
+        .reden {
+          margin-top: 2px; font-size: .72rem; color: var(--secondary-text-color);
+          opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .inc {
+          margin-left: 2px; padding: 0 6px; border-radius: 999px; font-size: .7rem;
+          border: 1px solid var(--divider-color, #d0d0d0); color: var(--secondary-text-color);
+        }
+        .inc.groot { border-color: #dc2626; color: #dc2626; font-weight: 600; }
+        .storing {
+          margin: 8px 16px 0; padding: 8px 10px; border-radius: 8px; font-size: .82rem;
+          background: rgba(234, 88, 12, .12); color: var(--primary-text-color);
+          border-left: 3px solid #ea580c;
+        }
         .leeg {
           padding: 18px 16px; color: var(--secondary-text-color);
           font-size: .88rem; line-height: 1.45;

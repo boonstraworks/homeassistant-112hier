@@ -5,7 +5,13 @@ blueprint:
 
     Je kiest zelf hoe dichtbij het moet zijn, welke urgenties tellen en of je
     's nachts met rust gelaten wilt worden. Het bericht bevat de plaats, de
-    straat en de afstand, en een tik erop opent de melding op de kaart.
+    straat en de afstand, met een kaartje van de plek erin, en een tik erop
+    opent de melding op de kaart.
+
+    Hoort een oproep bij een incident (vanaf de tweede oproep voor dezelfde
+    brand), dan werken de vervolgoproepen één bericht bij; op Android zonder
+    opnieuw te zoemen. Komen er na een internetstoring oude meldingen alsnog
+    binnen, dan worden die overgeslagen.
 
     Deze automatisering luistert naar het event `112hier_melding` en niet naar
     de sensor. Dat scheelt gemiste meldingen: komen er twee kort na elkaar
@@ -17,7 +23,7 @@ blueprint:
   input:
     waarheen:
       name: Waar naartoe
-      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_steven.
+      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_jan.
       selector:
         text:
 
@@ -104,6 +110,26 @@ blueprint:
             - P 1
             - PRIO 1
 
+    max_leeftijd:
+      name: Hoe oud mag een melding zijn
+      description: >
+        Na een herstart of een internetstoring komen oude meldingen alsnog
+        binnen. Ouder dan dit gaat er geen bericht uit. 0 = altijd melden.
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 240
+          step: 1
+          unit_of_measurement: min
+
+    met_kaartje:
+      name: Kaartje in het bericht
+      description: Een kaartje van de plek in het pushbericht (als de plek bekend is).
+      default: true
+      selector:
+        boolean:
+
 mode: queued
 max: 10
 
@@ -119,12 +145,49 @@ variables:
   stil_van: !input stille_uren_van
   stil_tot: !input stille_uren_tot
   nacht_uitzondering: !input stille_uren_uitzondering
+  max_leeftijd: !input max_leeftijd
+  met_kaartje: !input met_kaartje
   m: "{{ trigger.event.data }}"
   # Plek in één regel: straat en plaats als we ze hebben, anders wat er wel is.
   plek: >-
     {{ [m.straat, m.plaats] | reject('none') | reject('eq', '') | join(', ') }}
+  # Wat er naar de telefoon gaat. Eén tag per incident: een vervolgoproep voor
+  # dezelfde brand werkt het bericht bij in plaats van een nieuw te sturen, en
+  # met alert_once zoemt Android dan niet opnieuw. Spoed krijgt een eigen kanaal
+  # met hoge prioriteit: Android laat je de belangrijkheid van een kanaal alleen
+  # verlagen, dus gewone meldingen op hetzelfde kanaal zouden spoed dempen.
+  push: >-
+    {% set inc = m.get('incident') if m.get('incident') is mapping else {} %}
+    {% set iconen = {
+      'brandweer': 'mdi:fire-truck',
+      'ambulance': 'mdi:ambulance',
+      'politie': 'mdi:car-emergency',
+      'knrm': 'mdi:ferry'
+    } %}
+    {% set spoed = m.get('urgentie') in ['A0', 'A1', 'P 1', 'PRIO 1'] %}
+    {% set d = {
+      'url': m.get('url'),
+      'clickAction': m.get('url'),
+      'tag': '112hier-' ~ (('incident-' ~ inc.get('id')) if inc.get('id') else ('melding-' ~ m.get('id'))),
+      'alert_once': true,
+      'notification_icon': iconen.get(m.get('dienst'), 'mdi:alert-circle-outline'),
+      'actions': [{'action': 'URI', 'title': 'Open kaart', 'uri': inc.get('url') or m.get('url')}]
+    } %}
+    {% if spoed %}
+      {% set d = dict(d, channel='112hier-spoed', importance='high', priority='high', ttl=0) %}
+    {% else %}
+      {% set d = dict(d, channel='112hier', importance='default') %}
+    {% endif %}
+    {% set beeld = inc.get('afbeelding') or m.get('afbeelding') %}
+    {% if met_kaartje and beeld %}{% set d = dict(d, image=beeld) %}{% endif %}
+    {{ d }}
 
 condition:
+  # Geen oude meldingen na een herstart of storing.
+  - condition: template
+    value_template: >-
+      {{ not max_leeftijd or (m.get('leeftijd_s') or 0) | int(0) <= (max_leeftijd | int) * 60 }}
+
   # Urgentie
   - condition: template
     value_template: "{{ not urgenties or m.urgentie in urgenties }}"
@@ -163,24 +226,12 @@ condition:
       {% endif %}
 
 action:
-  - service: !input waarheen
+  - action: !input waarheen
     data:
       title: >-
         {{ m.urgentie or 'Melding' }}{% if plek %} · {{ plek }}{% endif %}
       message: >-
-        {{ m.leesbaar or m.bericht }}{% if m.afstand_km is not none %} ({{ m.afstand_km }} km){% endif %}
-      data:
-        # Werkt op Android; iOS negeert wat het niet kent.
-        url: "{{ m.url }}"
-        clickAction: "{{ m.url }}"
-        channel: "112hier"
-        importance: >-
-          {{ 'high' if m.urgentie in ['A0', 'A1', 'P 1', 'PRIO 1'] else 'default' }}
-        notification_icon: >-
-          {% set iconen = {
-            'brandweer': 'mdi:fire-truck',
-            'ambulance': 'mdi:ambulance',
-            'politie': 'mdi:car-emergency',
-            'knrm': 'mdi:ferry'
-          } %}
-          {{ iconen.get(m.dienst, 'mdi:alert-circle-outline') }}
+        {{ m.leesbaar or m.bericht }}{% if m.afstand_km is not none %} ({{ m.afstand_km }} km){% endif %}{% set inc = m.get('incident') %}{% if inc is mapping and (inc.get('oproepen') or 0) | int(0) > 1 %} · {{ inc.get('samenvatting') }}{% endif %}
+      # Kaartje, tag per incident en de knop "Open kaart". Android en iOS
+      # negeren wat ze niet kennen.
+      data: "{{ push }}"

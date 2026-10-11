@@ -37,12 +37,32 @@ def binnen(lat: float, lon: float, veelhoek: list) -> bool:
     return binnen_
 
 
+def is_test(alert: dict) -> bool:
+    """Is dit het landelijke test- of controlebericht?
+
+    Elke eerste maandag van juni en december gaat er een NL-Alert naar heel
+    Nederland. Dat mag nooit de ventilatie uitzetten of een alarm op je telefoon
+    geven. 112hier zet er soort "test" op; we kijken ook zelf naar de tekst, voor
+    het geval een oudere 112hier dat nog niet doet.
+    """
+    if (alert.get("soort") or "") == "test":
+        return True
+    toelichting = alert.get("toelichting") or []
+    if isinstance(toelichting, str):
+        toelichting = [toelichting]
+    tekst = " ".join([str(alert.get("kop") or ""), *map(str, toelichting)]).lower()
+    return any(w in tekst for w in ("testbericht", "controlebericht", "test message"))
+
+
 class NlAlertCoordinator(DataUpdateCoordinator):
     """Haalt de NL-Alerts van 112hier op en kijkt of ze jouw huis raken."""
 
-    def __init__(self, hass: HomeAssistant, basis: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, basis: str, user_agent: str = "homeassistant-112hier"
+    ) -> None:
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}_nl_alert", update_interval=NLA_INTERVAL)
         self._url = basis.rstrip("/") + NLA_PAD
+        self._ua = user_agent
         self._sessie = async_get_clientsession(hass)
         self._thuis = (hass.config.latitude, hass.config.longitude)
         # Welke berichten we al zagen, als (gebeurtenis, aantal berichten). Zo komt
@@ -51,6 +71,15 @@ class NlAlertCoordinator(DataUpdateCoordinator):
         self.alerts: list[dict] = []
         # Oudere 112hier-installaties (eigen ontvanger) kennen deze lijst nog niet.
         self.beschikbaar = True
+        # Mislukte rondes op rij. Eén hapering mag de schakelaar niet meteen
+        # "niet beschikbaar" maken: begint een alert precies dan, dan zag een
+        # automatisering de overgang naar "aan" niet.
+        self.fouten_op_rij = 0
+
+    @property
+    def bruikbaar(self) -> bool:
+        """Mogen de entiteiten hun laatst bekende stand blijven tonen?"""
+        return self.beschikbaar and (self.last_update_success or self.fouten_op_rij < 3)
 
     def voor_thuis(self, alert: dict) -> bool:
         lat, lon = self._thuis
@@ -61,9 +90,7 @@ class NlAlertCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> list[dict]:
         try:
             async with asyncio.timeout(20):
-                antwoord = await self._sessie.get(
-                    self._url, headers={"User-Agent": "homeassistant-112hier"}
-                )
+                antwoord = await self._sessie.get(self._url, headers={"User-Agent": self._ua})
                 if antwoord.status == 404:
                     self.beschikbaar = False
                     return []
@@ -72,14 +99,18 @@ class NlAlertCoordinator(DataUpdateCoordinator):
                 antwoord.raise_for_status()
                 data = await antwoord.json()
         except aiohttp.ClientError as err:
+            self.fouten_op_rij += 1
             raise UpdateFailed(f"112hier NL-Alert niet bereikbaar: {err}") from err
         except TimeoutError as err:
+            self.fouten_op_rij += 1
             raise UpdateFailed("112hier NL-Alert reageerde niet op tijd") from err
 
+        self.fouten_op_rij = 0
         self.beschikbaar = True
         alerts = data.get("alerts") or []
         for a in alerts:
             a["voor_jou"] = self.voor_thuis(a)
+            a["test"] = is_test(a)
 
         sleutels = {(a["id"], len(a.get("berichten") or [])) for a in alerts}
         if self._gezien is not None:

@@ -114,6 +114,9 @@ class MeldingOpKaart(GeolocationEvent):
 
     _attr_should_poll = False
     _attr_source = BRON
+    # Elke marker is een eigen entiteit; het ruwe bericht en de eenheden hoeven
+    # niet voor elk van die tientallen per dag in de database.
+    _unrecorded_attributes = frozenset({"bericht", "eenheden"})
     _attr_attribution = ATTRIBUTIE
     _attr_unit_of_measurement = UnitOfLength.KILOMETERS
 
@@ -159,6 +162,8 @@ class MeldingOpKaart(GeolocationEvent):
             "eenheden": [e.get("label") for e in (m.get("eenheden") or [])],
             "afstand_km": m.get("afstand_km"),
             "incident_id": m.get("incident_id"),
+            "incident": (m.get("incident") or {}).get("samenvatting"),
             "ontvangen": m.get("ontvangen"),
             "url": m.get("url"),
+            "filter_reden": m.get("filter_reden"),
         }

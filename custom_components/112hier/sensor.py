@@ -1,4 +1,4 @@
-"""De sensoren: laatste melding en aantal vandaag."""
+"""De sensoren: laatste melding, de bewaarde lijst, het laatste incident en NL-Alert."""
 
 from __future__ import annotations
 
@@ -25,13 +25,27 @@ async def async_setup_entry(
         [
             LaatsteMelding(coordinator, entry),
             AantalMeldingen(coordinator, entry),
+            LaatsteIncident(coordinator, entry),
             LaatsteNlAlert(nla, entry),
         ]
     )
 
 
+def _incident_kort(inc: dict | None) -> dict | None:
+    """Het incident in een paar velden: genoeg voor een kaart of een bericht."""
+    if not isinstance(inc, dict):
+        return None
+    return {
+        "id": inc.get("id"),
+        "niveau": inc.get("niveau"),
+        "niveau_naam": inc.get("niveau_naam"),
+        "samenvatting": inc.get("samenvatting"),
+        "oproepen": inc.get("oproepen"),
+    }
+
+
 class Basis(CoordinatorEntity[HierCoordinator], SensorEntity):
-    """Gedeelde eigenschappen van beide sensoren."""
+    """Gedeelde eigenschappen van de meldingsensoren."""
 
     _attr_has_entity_name = True
     _attr_attribution = ATTRIBUTIE
@@ -52,6 +66,9 @@ class LaatsteMelding(Basis):
     """De meest recente melding die aan je filters voldoet."""
 
     _attr_translation_key = "laatste_melding"
+    # Het ruwe bericht, de capcodes en de eenheden staan in de attributen voor
+    # automatiseringen, maar horen niet bij elke wijziging in de database.
+    _unrecorded_attributes = frozenset({"bericht", "capcodes", "eenheden", "incident"})
 
     def __init__(self, coordinator: HierCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry)
@@ -105,17 +122,28 @@ class LaatsteMelding(Basis):
             "eenheden": [e.get("label") for e in (m.get("eenheden") or [])],
             "afstand_km": m.get("afstand_km"),
             "incident_id": m.get("incident_id"),
+            "incident": _incident_kort(m.get("incident")),
             "ontvangen": m.get("ontvangen"),
             "url": m.get("url"),
+            # Kaartje van de plek, voor in een pushbericht.
+            "afbeelding": m.get("afbeelding"),
+            # Waarom deze melding doorkwam: "regio Haaglanden", "eigen post", …
+            "filter_reden": m.get("filter_reden"),
         }
 
 
 class AantalMeldingen(Basis):
-    """Hoeveel meldingen wij bewaard hebben sinds Home Assistant startte."""
+    """De laatste meldingen die door je filters kwamen (maximaal 30).
 
-    _attr_icon = "mdi:counter"
+    De waarde is het aantal; de lijst zelf staat in de attributen. Daar leest de
+    dashboardkaart uit. Geen statistiek: het getal is vrijwel altijd 30 en een
+    grafiek daarvan zegt niets.
+    """
+
+    _attr_icon = "mdi:format-list-bulleted"
     _attr_translation_key = "aantal"
-    _attr_state_class = "measurement"
+    # De lijst is tot ~15 KB; die hoort niet bij elke update in de database.
+    _unrecorded_attributes = frozenset({"meldingen", "ontvanger"})
 
     def __init__(self, coordinator: HierCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry)
@@ -134,6 +162,7 @@ class AantalMeldingen(Basis):
         de melding nog ergens hoeft op te halen.
         """
         return {
+            "ontvanger": self.coordinator.ontvanger,
             "meldingen": [
                 {
                     "id": m.get("id"),
@@ -148,10 +177,73 @@ class AantalMeldingen(Basis):
                     "regio": m.get("regio"),
                     "afstand_km": m.get("afstand_km"),
                     "incident_id": m.get("incident_id"),
+                    "incident": _incident_kort(m.get("incident")),
+                    "reden": m.get("filter_reden"),
                     "url": m.get("url"),
                 }
                 for m in self.coordinator.meldingen
-            ]
+            ],
+        }
+
+
+class LaatsteIncident(Basis):
+    """Het laatste incident in je gebied: zes oproepen voor één brand als één gebeurtenis.
+
+    112hier voegt oproepen die bij elkaar horen samen tot een incident, met een
+    samenvatting ("6 oproepen in 11 minuten, 2 diensten") en een niveau. Groeit
+    het incident, dan komt er een event `112hier_incident` met type
+    "opgeschaald".
+    """
+
+    _attr_translation_key = "laatste_incident"
+    _unrecorded_attributes = frozenset({"diensten", "afbeelding"})
+
+    def __init__(self, coordinator: HierCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_incident"
+
+    def _laatste(self) -> tuple[dict, dict] | None:
+        for m in self.coordinator.meldingen:
+            if isinstance(m.get("incident"), dict):
+                return m, m["incident"]
+        return None
+
+    @property
+    def icon(self) -> str:
+        gevonden = self._laatste()
+        niveau = gevonden[1].get("niveau") if gevonden else None
+        return {
+            "groot": "mdi:alarm-light",
+            "middel": "mdi:alarm-light-outline",
+        }.get(niveau or "", "mdi:map-marker-alert-outline")
+
+    @property
+    def native_value(self) -> str | None:
+        gevonden = self._laatste()
+        if not gevonden:
+            return None
+        m, inc = gevonden
+        return (inc.get("titel") or m.get("leesbaar") or m.get("bericht") or "")[:250]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        gevonden = self._laatste()
+        if not gevonden:
+            return {}
+        m, inc = gevonden
+        return {
+            "incident_id": inc.get("id"),
+            "samenvatting": inc.get("samenvatting"),
+            "niveau": inc.get("niveau"),
+            "niveau_naam": inc.get("niveau_naam"),
+            "oproepen": inc.get("oproepen"),
+            "diensten": inc.get("diensten"),
+            "oefening": inc.get("oefening"),
+            "actief": inc.get("actief"),
+            "plaats": m.get("plaats"),
+            "afstand_km": m.get("afstand_km"),
+            "url": inc.get("url"),
+            "afbeelding": inc.get("afbeelding"),
         }
 
 
@@ -175,7 +267,8 @@ class LaatsteNlAlert(CoordinatorEntity[NlAlertCoordinator], SensorEntity):
 
     @property
     def available(self) -> bool:
-        return super().available and self.coordinator.beschikbaar
+        # Niet super().available: die wordt bij één mislukte ronde al onwaar.
+        return self.coordinator.bruikbaar
 
     @property
     def native_value(self) -> str | None:
@@ -194,6 +287,7 @@ class LaatsteNlAlert(CoordinatorEntity[NlAlertCoordinator], SensorEntity):
             "id": a.get("id"),
             "status": a.get("status"),
             "soort": a.get("soort"),
+            "test": a.get("test"),
             "adviezen": a.get("adviezen"),
             "toelichting": a.get("toelichting"),
             "start": a.get("start"),
@@ -205,4 +299,7 @@ class LaatsteNlAlert(CoordinatorEntity[NlAlertCoordinator], SensorEntity):
             "bron_url": a.get("bron_url"),
             "url": a.get("url"),
             "actief_elders": [x.get("kop") for x in alerts if x.get("status") == "actief"],
+            # Staat deze op je kaart, ver van huis? Dan is dat geen melding uit
+            # je gebied: dit is het laatste NL-Alert van heel Nederland.
+            "filter_reden": "landelijk: het laatste NL-Alert in heel Nederland, niet gefilterd op jouw gebied",
         }

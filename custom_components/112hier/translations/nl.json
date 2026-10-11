@@ -3,14 +3,17 @@
     "step": {
       "user": {
         "title": "112-meldingen volgen",
-        "description": "Kies waar je van wilt weten. Laat je alles leeg, dan krijg je heel Nederland — dat zijn er honderden per dag. Capcodes van je eigen post vind je op 112hier.nl/alerts; oproepen daarvoor komen altijd door. In de trefwoordvelden mag je * en ? gebruiken, bijvoorbeeld *Epe*.",
+        "description": "Kies waar je van wilt weten: een provincie, regio, gemeente of een punt op de kaart. Laat je alles leeg, dan krijg je heel Nederland — zo'n 4.000 meldingen per dag. Zoek je eigen kazerne op naam; oproepen daarvoor komen altijd door, ook buiten je gebied. In de trefwoordvelden mag je * en ? gebruiken, bijvoorbeeld *Epe*.",
         "data": {
+          "provincies": "Provincies",
           "regios": "Veiligheidsregio's",
+          "gemeenten": "Gemeenten",
           "diensten": "Diensten",
           "plaats": "Woonplaats (optioneel)",
-          "punt": "Of een punt op de kaart",
+          "punt": "Punt op de kaart",
           "straal": "Straal rond dat punt",
           "alleen_spoed": "Alleen spoed (A0, A1, P 1, PRIO 1)",
+          "post_zoeken": "Zoek je post (bijvoorbeeld Alkmaar of Tankautospuit Haarlem)",
           "interval": "Hoe vaak kijken",
           "basis": "Adres van de feed",
           "capcodes": "Eigen post volgen (capcodes, komma-gescheiden)",
@@ -18,12 +21,30 @@
           "negeer": "Nooit tonen als het bericht dit bevat (bijvoorbeeld: testoproep)",
           "negeer_capcodes": "Nooit tonen voor deze capcodes (komma-gescheiden)",
           "spoed_straal": "Spoed in de buurt: binnen hoeveel km"
+        },
+        "data_description": {
+          "provincies": "Een provincie is een rijtje veiligheidsregio's; je hoeft die dan niet los te kiezen.",
+          "straal": "0 = geen straal. Het punt staat standaard op je huis.",
+          "post_zoeken": "Na opslaan krijg je een lijst met de pagers van die post om aan te vinken.",
+          "capcodes": "Komen altijd door, ook buiten je gebied en buiten de diensten die je koos."
+        }
+      },
+      "post": {
+        "title": "Kies je post",
+        "description": "Vink aan welke pagers je wilt volgen. Hun oproepen komen altijd door, ook buiten je gebied.",
+        "data": {
+          "posten": "Pagers"
         }
       }
     },
     "error": {
       "geen_verbinding": "Geen verbinding met de feed. Klopt het adres, en heeft Home Assistant internet?",
-      "geen_feed": "Dit adres antwoordt wel, maar het is geen 112hier-feed."
+      "geen_feed": "Dit adres antwoordt wel, maar het is geen 112hier-feed.",
+      "geen_posten": "Geen post gevonden met die naam. Probeer een plaatsnaam, of een woord als Tankautospuit.",
+      "posten_fout": "Zoeken lukte nu niet. Probeer het later opnieuw, of vul de capcodes zelf in.",
+      "ongeldige_capcode": "Dit is geen capcode (5 tot 10 cijfers). Zoek je post liever op naam met \"Zoek je post\".",
+      "te_veel_capcodes": "Te veel capcodes: de feed neemt er hooguit 40 mee. Kies minder pagers.",
+      "gemeente_buiten_gebied": "Deze gemeente ligt buiten de provincie of regio die je koos, dus er zou nooit iets doorkomen. Kies een van beide."
     }
   },
   "options": {
@@ -31,12 +52,15 @@
       "init": {
         "title": "Instellingen aanpassen",
         "data": {
+          "provincies": "Provincies",
           "regios": "Veiligheidsregio's",
+          "gemeenten": "Gemeenten",
           "diensten": "Diensten",
           "plaats": "Woonplaats (optioneel)",
-          "punt": "Of een punt op de kaart",
+          "punt": "Punt op de kaart",
           "straal": "Straal rond dat punt",
           "alleen_spoed": "Alleen spoed (A0, A1, P 1, PRIO 1)",
+          "post_zoeken": "Zoek je post (bijvoorbeeld Alkmaar of Tankautospuit Haarlem)",
           "interval": "Hoe vaak kijken",
           "basis": "Adres van de feed",
           "capcodes": "Eigen post volgen (capcodes, komma-gescheiden)",
@@ -44,8 +68,28 @@
           "negeer": "Nooit tonen als het bericht dit bevat (bijvoorbeeld: testoproep)",
           "negeer_capcodes": "Nooit tonen voor deze capcodes (komma-gescheiden)",
           "spoed_straal": "Spoed in de buurt: binnen hoeveel km"
+        },
+        "data_description": {
+          "provincies": "Een provincie is een rijtje veiligheidsregio's; je hoeft die dan niet los te kiezen.",
+          "straal": "0 = geen straal. Het punt staat standaard op je huis.",
+          "post_zoeken": "Na opslaan krijg je een lijst met de pagers van die post om aan te vinken.",
+          "capcodes": "Komen altijd door, ook buiten je gebied en buiten de diensten die je koos."
+        }
+      },
+      "post": {
+        "title": "Kies je post",
+        "description": "Vink aan welke pagers je wilt volgen. Ze worden toegevoegd aan de capcodes die je al had.",
+        "data": {
+          "posten": "Pagers"
         }
       }
+    },
+    "error": {
+      "geen_posten": "Geen post gevonden met die naam. Probeer een plaatsnaam, of een woord als Tankautospuit.",
+      "posten_fout": "Zoeken lukte nu niet. Probeer het later opnieuw, of vul de capcodes zelf in.",
+      "ongeldige_capcode": "Dit is geen capcode (5 tot 10 cijfers). Zoek je post liever op naam met \"Zoek je post\".",
+      "te_veel_capcodes": "Te veel capcodes: de feed neemt er hooguit 40 mee. Kies minder pagers.",
+      "gemeente_buiten_gebied": "Deze gemeente ligt buiten de provincie of regio die je koos, dus er zou nooit iets doorkomen. Kies een van beide."
     }
   },
   "entity": {
@@ -55,6 +99,9 @@
       },
       "aantal": {
         "name": "Meldingen bewaard"
+      },
+      "laatste_incident": {
+        "name": "Laatste incident"
       },
       "laatste_nl_alert": {
         "name": "Laatste NL-Alert"
@@ -66,6 +113,9 @@
       },
       "nl_alert_thuis": {
         "name": "NL-Alert voor jouw locatie"
+      },
+      "ontvangst": {
+        "name": "Ontvangst 112hier"
       }
     }
   }
