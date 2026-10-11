@@ -55,11 +55,17 @@
       },
       "aantal": {
         "name": "Dispatches kept"
+      },
+      "laatste_nl_alert": {
+        "name": "Latest NL-Alert"
       }
     },
     "binary_sensor": {
       "spoed_in_de_buurt": {
         "name": "Urgent nearby"
+      },
+      "nl_alert_thuis": {
+        "name": "NL-Alert for your location"
       }
     }
   }

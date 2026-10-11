@@ -1,0 +1,124 @@
+blueprint:
+  name: 112hier — NL-Alert voor jouw huis
+  description: >
+    Doet wat een NL-Alert je vraagt, zodra je huis binnen het uitzendgebied ligt.
+
+    Bij een brand met veel rook of een gaswolk is het advies bijna altijd:
+    ramen en deuren dicht, ventilatie uit. Deze automatisering zet de
+    ventilatie (of WTW, airco, afzuigkap) die je kiest meteen uit en stuurt een
+    bericht naar je telefoon met de tekst en de adviezen. Is het alert
+    opgeheven, dan krijg je daar ook bericht van en mag de ventilatie desgewenst
+    weer aan.
+
+    Werkt met de schakelaar "NL-Alert voor jouw locatie" van de
+    112hier-integratie. "Jouw huis" is de locatie uit de Home
+    Assistant-instellingen.
+  domain: automation
+  source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/nl_alert_thuis.yaml
+  author: 112hier.nl
+
+  input:
+    schakelaar:
+      name: NL-Alert-schakelaar
+      description: De binary_sensor "NL-Alert voor jouw locatie" van 112hier.
+      selector:
+        entity:
+          filter:
+            - integration: 112hier
+              domain: binary_sensor
+
+    waarheen:
+      name: Waar naartoe
+      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_steven. Leeg laten = geen bericht.
+      default: ""
+      selector:
+        text:
+
+    uitzetten:
+      name: Wat uit moet
+      description: Ventilatie, WTW, airco of afzuigkap die uit moet bij een alert. Leeg laten = niets uitzetten.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: [fan, climate, switch, humidifier]
+
+    weer_aan:
+      name: Weer aanzetten na opheffing
+      description: Zet wat je hierboven koos weer aan zodra het alert voorbij is.
+      default: false
+      selector:
+        boolean:
+
+mode: queued
+
+trigger:
+  - platform: state
+    entity_id: !input schakelaar
+    from: "off"
+    to: "on"
+    id: aan
+  - platform: state
+    entity_id: !input schakelaar
+    from: "on"
+    to: "off"
+    id: uit
+
+variables:
+  waarheen: !input waarheen
+  uitzetten: !input uitzetten
+  weer_aan: !input weer_aan
+  schakelaar: !input schakelaar
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: aan
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ uitzetten | length > 0 }}"
+            then:
+              - action: homeassistant.turn_off
+                target:
+                  entity_id: "{{ uitzetten }}"
+          - if:
+              - condition: template
+                value_template: "{{ waarheen | length > 0 }}"
+            then:
+              - action: "{{ waarheen }}"
+                data:
+                  title: "NL-Alert voor jouw huis"
+                  message: >-
+                    {{ state_attr(schakelaar, 'kop') }}.
+                    {% set a = state_attr(schakelaar, 'adviezen') or [] %}{% if a %}Advies: {{ a | join(', ') | lower }}.{% endif %}
+                    {% if uitzetten | length > 0 %}De ventilatie is uitgezet.{% endif %}
+                  data:
+                    url: "{{ state_attr(schakelaar, 'url') }}"
+                    clickAction: "{{ state_attr(schakelaar, 'url') }}"
+                    importance: high
+                    priority: high
+                    ttl: 0
+      - conditions:
+          - condition: trigger
+            id: uit
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ weer_aan and uitzetten | length > 0 }}"
+            then:
+              - action: homeassistant.turn_on
+                target:
+                  entity_id: "{{ uitzetten }}"
+          - if:
+              - condition: template
+                value_template: "{{ waarheen | length > 0 }}"
+            then:
+              - action: "{{ waarheen }}"
+                data:
+                  title: "NL-Alert voorbij"
+                  message: >-
+                    Het NL-Alert voor jouw huis is opgeheven of afgelopen.
+                    {% if weer_aan and uitzetten | length > 0 %}De ventilatie staat weer aan.{% endif %}

@@ -55,11 +55,17 @@
       },
       "aantal": {
         "name": "Meldingen bewaard"
+      },
+      "laatste_nl_alert": {
+        "name": "Laatste NL-Alert"
       }
     },
     "binary_sensor": {
       "spoed_in_de_buurt": {
         "name": "Spoed in de buurt"
+      },
+      "nl_alert_thuis": {
+        "name": "NL-Alert voor jouw locatie"
       }
     }
   }

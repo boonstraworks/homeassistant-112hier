@@ -13,14 +13,20 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import ATTRIBUTIE, DOMAIN, SPOED_CODES
 from .coordinator import HierCoordinator
+from .nlalert import NlAlertCoordinator
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: HierCoordinator = hass.data[DOMAIN][entry.entry_id]
+    nla: NlAlertCoordinator = hass.data[f"{DOMAIN}_nla"][entry.entry_id]
     async_add_entities(
-        [LaatsteMelding(coordinator, entry), AantalMeldingen(coordinator, entry)]
+        [
+            LaatsteMelding(coordinator, entry),
+            AantalMeldingen(coordinator, entry),
+            LaatsteNlAlert(nla, entry),
+        ]
     )
 
 
@@ -140,4 +146,57 @@ class AantalMeldingen(Basis):
                 }
                 for m in self.coordinator.meldingen
             ]
+        }
+
+
+class LaatsteNlAlert(CoordinatorEntity[NlAlertCoordinator], SensorEntity):
+    """Het meest recente NL-Alert in Nederland, met of het jouw huis raakte.
+
+    Landelijk, niet gefilterd op je regio: een NL-Alert is zeldzaam (een paar per
+    week) en wie er een krijgt, wil weten wat er speelt. Of het jou aangaat staat
+    in "voor_jou" — en in de schakelaar "NL-Alert voor jouw locatie".
+    """
+
+    _attr_has_entity_name = True
+    _attr_attribution = ATTRIBUTIE
+    _attr_icon = "mdi:alert-octagram-outline"
+    _attr_translation_key = "laatste_nl_alert"
+
+    def __init__(self, coordinator: NlAlertCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_nl_alert"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.beschikbaar
+
+    @property
+    def native_value(self) -> str | None:
+        alerts = self.coordinator.alerts
+        return (alerts[0].get("kop") or "")[:250] if alerts else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        alerts = self.coordinator.alerts
+        if not alerts:
+            return {}
+        a = alerts[0]
+        centrum = a.get("centrum") or {}
+        incident = a.get("incident") or {}
+        return {
+            "id": a.get("id"),
+            "status": a.get("status"),
+            "soort": a.get("soort"),
+            "adviezen": a.get("adviezen"),
+            "toelichting": a.get("toelichting"),
+            "start": a.get("start"),
+            "laatst": a.get("laatst"),
+            "voor_jou": a.get("voor_jou"),
+            "latitude": centrum.get("lat"),
+            "longitude": centrum.get("lon"),
+            "incident_url": incident.get("url"),
+            "bron_url": a.get("bron_url"),
+            "url": a.get("url"),
+            "actief_elders": [x.get("kop") for x in alerts if x.get("status") == "actief"],
         }

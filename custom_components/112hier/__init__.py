@@ -30,6 +30,7 @@ from .const import (
     MIN_INTERVAL_SECONDEN,
 )
 from .coordinator import HierCoordinator
+from .nlalert import NlAlertCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,6 +107,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+
+    # NL-Alert loopt naast de meldingen. Een fout of een oudere 112hier zonder
+    # NL-Alert mag het opzetten niet tegenhouden: dan blijven die twee entiteiten
+    # gewoon leeg.
+    nla = NlAlertCoordinator(hass, inst.get(CONF_BASIS) or DEFAULT_BASIS)
+    await nla.async_refresh()
+    hass.data.setdefault(f"{DOMAIN}_nla", {})[entry.entry_id] = nla
     await _zorg_voor_kaart(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     # Bij het wijzigen van opties opnieuw laden, anders blijft het oude filter staan.
@@ -121,4 +129,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ontladen = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if ontladen:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        hass.data.get(f"{DOMAIN}_nla", {}).pop(entry.entry_id, None)
     return ontladen

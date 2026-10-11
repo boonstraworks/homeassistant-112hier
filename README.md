@@ -43,6 +43,8 @@ hours_to_show: 2
 | `sensor.laatste_melding` | de meest recente melding in jouw gebied |
 | `sensor.meldingen_bewaard` | hoeveel er sinds het opstarten binnenkwamen, met de hele lijst in de attributen |
 | `binary_sensor.spoed_in_de_buurt` | aan zolang er in het laatste kwartier een spoedmelding dichtbij was |
+| `sensor.laatste_nl_alert` | het meest recente NL-Alert in Nederland, met status, adviezen en of het jouw huis raakte |
+| `binary_sensor.nl_alert_voor_jouw_locatie` | aan zolang er een actief NL-Alert is waarvan het uitzendgebied jouw huis raakt |
 
 Die laatste is bedoeld voor automatiseringen die je als *toestand* wilt lezen
 in plaats van als gebeurtenis: "zet de lamp rood zolang dit aan staat", of een
@@ -101,6 +103,29 @@ type: map
 entities:
   - entity: sensor.laatste_melding
 ```
+
+## NL-Alert
+
+NL-Alert is het waarschuwingssysteem van de overheid: bij een brand met veel rook,
+een gaswolk of een andere crisis krijgt elke telefoon in het gebied een bericht.
+112hier houdt die berichten bij, met het **uitzendgebied**, en de integratie
+rekent uit of jouw huis (de locatie uit de Home Assistant-instellingen) daarbinnen ligt.
+
+- `binary_sensor.nl_alert_voor_jouw_locatie` gaat aan bij een actief alert voor jouw huis,
+  en weer uit als het is opgeheven of afgelopen.
+- `sensor.laatste_nl_alert` toont het laatste alert in heel Nederland; in de attributen
+  staan de adviezen, de status en `voor_jou`.
+- Het event `112hier_nl_alert` komt bij elk nieuw alert, en ook bij een herhaling of
+  opheffing. Met `voor_jou: true` als het jouw huis raakt.
+
+De blueprint **NL-Alert voor jouw huis** zet bij een alert meteen de ventilatie, WTW of
+airco uit die je kiest — het advies bij rook en gas — en stuurt je een bericht. Na de
+opheffing kan hij alles weer aanzetten.
+
+[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fnl_alert_thuis.yaml)
+
+Let op: dit vervangt het NL-Alert op je telefoon niet. 112hier haalt de alerts elke twee
+minuten op uit de openbare lijst van de overheid; je telefoon krijgt ze direct.
 
 ## Installeren
 

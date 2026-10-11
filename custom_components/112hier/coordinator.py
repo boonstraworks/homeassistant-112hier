@@ -11,8 +11,9 @@ import logging
 from datetime import timedelta
 from fnmatch import fnmatch
 
+import asyncio
+
 import aiohttp
-import async_timeout
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -166,7 +167,7 @@ class HierCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> list[dict]:
         try:
-            async with async_timeout.timeout(20):
+            async with asyncio.timeout(20):
                 antwoord = await self._sessie.get(
                     self._url(), headers={"User-Agent": "homeassistant-112hier"}
                 )
