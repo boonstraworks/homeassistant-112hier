@@ -1,7 +1,11 @@
 # 112hier voor Home Assistant
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
+[![Laatste versie](https://img.shields.io/github/v/release/stevenb211/homeassistant-112hier?label=versie)](https://github.com/stevenb211/homeassistant-112hier/releases)
+
 Live 112-meldingen van brandweer, ambulance, politie en KNRM in Home Assistant,
-met de gegevens van [112hier.nl](https://112hier.nl).
+met de gegevens van [112hier.nl](https://112hier.nl). Plus een seintje als er
+een NL-Alert is voor het gebied waar je huis staat.
 
 Instellen doe je via de interface: je klikt je regio's, diensten en eventueel een
 straal rond je huis bij elkaar. Geen capcodes opzoeken, geen regels in
@@ -23,11 +27,15 @@ aantal: 8
 
 De kaart wordt door de integratie zelf ingeladen — je hoeft niets toe te voegen
 aan je Lovelace-bronnen. Ze staat gewoon in de lijst bij *Kaart toevoegen*.
+Zegt Home Assistant dat `custom:card-112hier` niet bestaat, kijk dan bij
+[Problemen](#problemen).
 
 **Meldingen op de kaart**
 
 Elke melding wordt een eigen `geo_location`-entiteit, dus je ziet ze allemaal
 tegelijk op een kaart staan in plaats van één marker die door Nederland springt.
+Valt een melding uit de lijst, dan verdwijnt de marker ook weer; ze stapelen zich
+niet op in je entiteitenlijst.
 
 ```yaml
 type: map
@@ -36,19 +44,25 @@ geo_location_sources:
 hours_to_show: 2
 ```
 
-**Drie entiteiten**
+**Vijf entiteiten**
 
 | Entiteit | Waarde |
 |---|---|
-| `sensor.laatste_melding` | de meest recente melding in jouw gebied |
-| `sensor.meldingen_bewaard` | hoeveel er sinds het opstarten binnenkwamen, met de hele lijst in de attributen |
-| `binary_sensor.spoed_in_de_buurt` | aan zolang er in het laatste kwartier een spoedmelding dichtbij was |
-| `sensor.laatste_nl_alert` | het meest recente NL-Alert in Nederland, met status, adviezen en of het jouw huis raakte |
-| `binary_sensor.nl_alert_voor_jouw_locatie` | aan zolang er een actief NL-Alert is waarvan het uitzendgebied jouw huis raakt |
+| Laatste melding | de meest recente melding in jouw gebied, met het icoon van de dienst |
+| Meldingen bewaard | de laatste meldingen die door je filters kwamen (maximaal 30); de hele lijst staat in de attributen, en daar leest de dashboardkaart uit |
+| Spoed in de buurt | aan zolang er in het laatste kwartier een spoedmelding dichtbij was |
+| Laatste NL-Alert | het meest recente NL-Alert in Nederland, met status, adviezen en of het jouw huis raakte |
+| NL-Alert voor jouw locatie | aan zolang er een actief NL-Alert is waarvan het uitzendgebied jouw huis raakt |
 
-Die laatste is bedoeld voor automatiseringen die je als *toestand* wilt lezen
-in plaats van als gebeurtenis: "zet de lamp rood zolang dit aan staat", of een
-conditie "alleen als er niks speelt". Hoe dichtbij "dichtbij" is stel je zelf
+De entiteit-id begint met de naam van je configuratie. Heet die "112 · Haaglanden",
+dan wordt het bijvoorbeeld `sensor.112_haaglanden_laatste_melding` en
+`binary_sensor.112_haaglanden_spoed_in_de_buurt`. Staat Home Assistant in een
+andere taal dan Nederlands, dan krijgen ze de Engelse namen (`latest_dispatch`,
+`urgent_nearby`, …).
+
+*Spoed in de buurt* is bedoeld voor automatiseringen die je als *toestand* wilt
+lezen in plaats van als gebeurtenis: "zet de lamp rood zolang dit aan staat", of
+een conditie "alleen als er niks speelt". Hoe dichtbij "dichtbij" is stel je zelf
 in.
 
 De laatste melding heeft alles wat je nodig hebt in zijn attributen: `dienst`,
@@ -101,7 +115,7 @@ De melding op een kaart zetten:
 ```yaml
 type: map
 entities:
-  - entity: sensor.laatste_melding
+  - entity: sensor.112_haaglanden_laatste_melding
 ```
 
 ## NL-Alert
@@ -111,9 +125,9 @@ een gaswolk of een andere crisis krijgt elke telefoon in het gebied een bericht.
 112hier houdt die berichten bij, met het **uitzendgebied**, en de integratie
 rekent uit of jouw huis (de locatie uit de Home Assistant-instellingen) daarbinnen ligt.
 
-- `binary_sensor.nl_alert_voor_jouw_locatie` gaat aan bij een actief alert voor jouw huis,
+- *NL-Alert voor jouw locatie* gaat aan bij een actief alert voor jouw huis,
   en weer uit als het is opgeheven of afgelopen.
-- `sensor.laatste_nl_alert` toont het laatste alert in heel Nederland; in de attributen
+- *Laatste NL-Alert* toont het laatste alert in heel Nederland; in de attributen
   staan de adviezen, de status en `voor_jou`.
 - Het event `112hier_nl_alert` komt bij elk nieuw alert, en ook bij een herhaling of
   opheffing. Met `voor_jou: true` als het jouw huis raakt.
@@ -125,20 +139,35 @@ opheffing kan hij alles weer aanzetten.
 [![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fnl_alert_thuis.yaml)
 
 Let op: dit vervangt het NL-Alert op je telefoon niet. 112hier haalt de alerts elke twee
-minuten op uit de openbare lijst van de overheid; je telefoon krijgt ze direct.
+minuten op uit de openbare lijst van de overheid, en de integratie kijkt ook elke twee
+minuten. Het kan dus een paar minuten duren; je telefoon krijgt ze direct.
 
 ## Installeren
 
+Nodig: Home Assistant 2024.8 of nieuwer.
+
 **Via HACS** (aanbevolen)
 
-1. HACS → Integraties → ⋮ → Aangepaste repositories
-2. Voeg `https://github.com/stevenb211/homeassistant-112hier` toe, categorie *Integratie*
-3. Zoek op "112hier", installeer, herstart Home Assistant
+[![Openen in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=stevenb211&repository=homeassistant-112hier&category=integration)
+
+Met de knop hierboven gaat het in één keer. Liever met de hand:
+
+1. HACS → ⋮ (rechtsboven) → *Aangepaste repositories*
+2. Plak `https://github.com/stevenb211/homeassistant-112hier`, kies type *Integratie* en klik *Toevoegen*
+3. Zoek op "112hier", klik *Downloaden* en herstart Home Assistant
 4. Instellingen → Apparaten & diensten → Integratie toevoegen → **112hier**
 
 **Handmatig**
 
 Kopieer `custom_components/112hier` naar je `config`-map en herstart.
+
+## Bijwerken
+
+HACS kijkt zelf of er een nieuwe versie is. Is die er, dan staat bovenaan
+*Instellingen* een melding "Update beschikbaar" voor 112hier, met wat er
+veranderd is. Klik op *Bijwerken*, herstart Home Assistant en ververs je
+browser (Ctrl+F5), zodat ook de nieuwste dashboardkaart wordt geladen. Wat er
+per versie veranderde staat bij de [releases](https://github.com/stevenb211/homeassistant-112hier/releases).
 
 ## Instellingen
 
@@ -222,6 +251,20 @@ geen straat om te tonen.
 
 Er zit geen garantie op en geen serviceafspraak. Dit is een hobbyontvanger, geen
 C2000-aansluiting — **bouw er niets mee waar levens van afhangen, en bel bij nood 112.**
+
+## Problemen
+
+**"Custom element doesn't exist: card-112hier"** — de kaart zit in de
+integratie sinds versie 1.2. Werk bij (zie hierboven), herstart en ververs je
+browser met Ctrl+F5. In de app op je telefoon: sluit de app helemaal af en open
+hem opnieuw.
+
+**Heel veel `geo_location`-entiteiten** — tot en met versie 1.3.0 bleven oude
+kaartmarkers in de entiteitenlijst staan, tot Home Assistant er niets meer bij
+wilde zetten. Werk bij naar 1.3.1 of nieuwer: bij de eerste start ruimt de
+integratie ze zelf op.
+
+Iets anders? Meld het bij de [issues](https://github.com/stevenb211/homeassistant-112hier/issues).
 
 ## De feed zelf
 
