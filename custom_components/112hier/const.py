@@ -45,6 +45,15 @@ SPOED_CODES = {"A0", "A1", "P 1", "PRIO 1"}
 
 DIENSTEN = ["brandweer", "ambulance", "politie", "knrm"]
 
+# Icoon per dienst, voor de kaartmarkers en de sensor "Laatste melding".
+DIENST_ICOON = {
+    "brandweer": "mdi:fire-truck",
+    "ambulance": "mdi:ambulance",
+    "politie": "mdi:car-emergency",
+    "knrm": "mdi:ferry",
+}
+GEEN_DIENST_ICOON = "mdi:alert-circle-outline"
+
 # Het event dat wij op de bus zetten bij elke nieuwe melding. Hier hang je je
 # automatiseringen aan.
 EVENT_MELDING = "112hier_melding"

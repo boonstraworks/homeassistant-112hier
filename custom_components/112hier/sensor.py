@@ -11,7 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTRIBUTIE, DOMAIN, SPOED_CODES
+from .const import ATTRIBUTIE, DIENST_ICOON, DOMAIN, GEEN_DIENST_ICOON, SPOED_CODES
 from .coordinator import HierCoordinator
 from .nlalert import NlAlertCoordinator
 
@@ -51,12 +51,18 @@ class Basis(CoordinatorEntity[HierCoordinator], SensorEntity):
 class LaatsteMelding(Basis):
     """De meest recente melding die aan je filters voldoet."""
 
-    _attr_icon = "mdi:alert-circle-outline"
     _attr_translation_key = "laatste_melding"
 
     def __init__(self, coordinator: HierCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_laatste"
+
+    @property
+    def icon(self) -> str:
+        """Het icoon van de dienst: een brandweerauto bij een brandmelding, enz."""
+        meldingen = self.coordinator.meldingen
+        dienst = (meldingen[0].get("dienst") or "") if meldingen else ""
+        return DIENST_ICOON.get(dienst, GEEN_DIENST_ICOON)
 
     @property
     def native_value(self) -> str | None:

@@ -20,7 +20,7 @@ from homeassistant.const import UnitOfLength
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import ATTRIBUTIE, DOMAIN, SPOED_CODES
+from .const import ATTRIBUTIE, DIENST_ICOON, DOMAIN, GEEN_DIENST_ICOON, SPOED_CODES
 from .coordinator import HierCoordinator
 
 BRON = "112hier"
@@ -103,7 +103,10 @@ class Beheer:
         # daar afvalt hoort ook van de kaart te verdwijnen.
         for mid in [x for x in self._bekend if x not in meldingen]:
             entiteit = self._bekend.pop(mid)
-            self._hass.async_create_task(entiteit.async_remove())
+            # Een marker die Home Assistant nooit heeft toegevoegd (hass is dan
+            # None) valt ook niet te verwijderen; dat gaf een fout in het log.
+            if entiteit.hass is not None:
+                self._hass.async_create_task(entiteit.async_remove())
 
 
 class MeldingOpKaart(GeolocationEvent):
@@ -117,7 +120,11 @@ class MeldingOpKaart(GeolocationEvent):
     def __init__(self, entry: ConfigEntry, melding: dict) -> None:
         self._melding = melding
         self.melding_id: int = melding["id"]
-        self._attr_unique_id = f"{entry.entry_id}_{melding['id']}"
+        # Bewust geen unique_id. Met een unique_id zet Home Assistant elke marker
+        # voorgoed in het entiteitenregister; bij honderden meldingen per dag zat
+        # dat na een paar dagen aan de grens van tienduizend, waarna er voor deze
+        # integratie niets meer bij kon. Een marker leeft maar kort en heeft geen
+        # instellingen die bewaard moeten blijven.
         locatie = melding.get("locatie") or {}
         self._attr_latitude = locatie.get("lat")
         self._attr_longitude = locatie.get("lon")
@@ -133,12 +140,7 @@ class MeldingOpKaart(GeolocationEvent):
 
     @property
     def icon(self) -> str:
-        return {
-            "brandweer": "mdi:fire-truck",
-            "ambulance": "mdi:ambulance",
-            "politie": "mdi:car-emergency",
-            "knrm": "mdi:ferry",
-        }.get(self._melding.get("dienst") or "", "mdi:alert-circle-outline")
+        return DIENST_ICOON.get(self._melding.get("dienst") or "", GEEN_DIENST_ICOON)
 
     @property
     def extra_state_attributes(self) -> dict:

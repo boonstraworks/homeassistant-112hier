@@ -11,6 +11,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 
 from .const import (
@@ -76,8 +77,41 @@ async def _zorg_voor_kaart(hass: HomeAssistant) -> None:
         )
 
 
+def _ruim_oude_markers_op(hass: HomeAssistant, entry: ConfigEntry) -> int:
+    """Kaartmarkers uit het entiteitenregister halen die oudere versies achterlieten.
+
+    Tot en met 1.3.0 kreeg elke melding op de kaart een vaste unique_id. Home
+    Assistant zette daardoor elke marker voorgoed in het register, ook nadat hij
+    van de kaart was verdwenen. Na een paar dagen stonden er tienduizend, en bij
+    die grens voegt Home Assistant voor deze integratie niets meer toe — ook geen
+    nieuwe sensoren. Sinds 1.3.1 hebben markers geen unique_id meer, dus wat er
+    nog staat is altijd een overblijfsel.
+    """
+    register = er.async_get(hass)
+    oud = [
+        e
+        for e in er.async_entries_for_config_entry(register, entry.entry_id)
+        if e.domain == Platform.GEO_LOCATION
+    ]
+    verwijderd = getattr(register, "deleted_entities", None)
+    for e in oud:
+        register.async_remove(e.entity_id)
+        # Een verwijderde entiteit onthoudt Home Assistant nog, voor als hij
+        # terugkomt. Een marker komt nooit terug; zonder dit blijft het
+        # registerbestand even groot als ervoor.
+        try:
+            verwijderd.pop((e.domain, e.platform, e.unique_id), None)
+        except (AttributeError, TypeError):
+            pass
+    return len(oud)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Eén coördinator per configuratie opzetten."""
+    # Vóór de platforms: anders lopen de sensoren nog tegen de volle teller aan.
+    if opgeruimd := _ruim_oude_markers_op(hass, entry):
+        _LOGGER.info("112hier: %s oude kaartmarkers uit het register gehaald", opgeruimd)
+
     # Opties winnen van de oorspronkelijke invoer: zo werkt "Configureren" in de UI.
     inst = {**entry.data, **entry.options}
 
