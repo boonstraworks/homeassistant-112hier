@@ -17,7 +17,7 @@ blueprint:
     de sensor. Dat scheelt gemiste meldingen: komen er twee kort na elkaar
     binnen, dan krijg je ze allebei in plaats van alleen de laatste.
   domain: automation
-  source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/melding_op_je_telefoon.yaml
+  source_url: https://github.com/boonstraworks/homeassistant-112hier/blob/main/blueprints/automation/112hier/melding_op_je_telefoon.yaml
   author: 112hier.nl
 
   input:

@@ -315,7 +315,7 @@ if (!customElements.get('card-112hier')) {
     name: '112hier — meldingen',
     description: 'De laatste 112-meldingen uit jouw gebied, nieuwste boven.',
     preview: true,
-    documentationURL: 'https://github.com/stevenb211/homeassistant-112hier',
+    documentationURL: 'https://github.com/boonstraworks/homeassistant-112hier',
   });
 
   // eslint-disable-next-line no-console

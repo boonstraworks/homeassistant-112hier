@@ -9,7 +9,7 @@ blueprint:
     noemt de magnitude, de plaats en de afstand tot je huis. Je kunt er ook
     lampen of een scène aan hangen.
   domain: automation
-  source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/aardbeving_in_de_buurt.yaml
+  source_url: https://github.com/boonstraworks/homeassistant-112hier/blob/main/blueprints/automation/112hier/aardbeving_in_de_buurt.yaml
   author: 112hier.nl
 
   input:

@@ -15,7 +15,7 @@ blueprint:
     Assistant-instellingen. Het landelijke testbericht (juni en december)
     zet de schakelaar niet aan.
   domain: automation
-  source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/nl_alert_thuis.yaml
+  source_url: https://github.com/boonstraworks/homeassistant-112hier/blob/main/blueprints/automation/112hier/nl_alert_thuis.yaml
   author: 112hier.nl
 
   input:

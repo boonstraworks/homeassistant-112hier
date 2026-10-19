@@ -1,14 +1,14 @@
 # 112hier voor Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
-[![Laatste versie](https://img.shields.io/github/v/release/stevenb211/homeassistant-112hier?label=versie)](https://github.com/stevenb211/homeassistant-112hier/releases)
+[![Laatste versie](https://img.shields.io/github/v/release/boonstraworks/homeassistant-112hier?label=versie)](https://github.com/boonstraworks/homeassistant-112hier/releases)
 [![Steun op Ko-fi](https://img.shields.io/badge/Ko--fi-steun%20112hier-72A4F2?logo=ko-fi&logoColor=white)](https://ko-fi.com/112hier)
 
 Live 112-meldingen van brandweer, ambulance, politie en KNRM in Home Assistant,
 met de gegevens van [112hier.nl](https://112hier.nl). Plus een seintje als er
 een NL-Alert is voor het gebied waar je huis staat.
 
-![De meldingen uit Noord-Holland komen binnen, met bij elke melding waarom hij er staat; rechts alle meldingen op de kaart](https://raw.githubusercontent.com/stevenb211/homeassistant-112hier/main/docs/live.gif)
+![De meldingen uit Noord-Holland komen binnen, met bij elke melding waarom hij er staat; rechts alle meldingen op de kaart](https://raw.githubusercontent.com/boonstraworks/homeassistant-112hier/main/docs/live.gif)
 
 Instellen doe je via de interface: je kiest een provincie, gemeente, regio of
 een straal rond je huis, en je zoekt je kazerne op naam. Geen capcodes
@@ -44,7 +44,7 @@ in het grijs waarom hij er staat. Hoort een melding bij een groter incident,
 dan staat erbij hoeveel oproepen het al zijn. Klik op een regel en de melding
 opent op 112hier.nl.
 
-![Dashboardkaart en kaart met meldingen](https://raw.githubusercontent.com/stevenb211/homeassistant-112hier/main/docs/dashboard.jpg)
+![Dashboardkaart en kaart met meldingen](https://raw.githubusercontent.com/boonstraworks/homeassistant-112hier/main/docs/dashboard.jpg)
 
 ```yaml
 type: custom:card-112hier
@@ -107,7 +107,7 @@ kaartje van de plek), `filter_reden` en een `url` naar de melding.
 
 Geen YAML nodig. Importeer de blueprint, kies je telefoon en je bent klaar:
 
-[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fmelding_op_je_telefoon.yaml)
+[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fboonstraworks%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fmelding_op_je_telefoon.yaml)
 
 - **Een kaartje van de plek** in het bericht, met een knop *Open kaart*.
 - **Eén bericht per incident.** De eerste oproep is nog een losse melding;
@@ -176,7 +176,7 @@ airco uit die je kiest — het advies bij rook en gas — en stuurt je een beric
 opheffing kan hij alles weer aanzetten. Begon het alert terwijl Home Assistant
 herstartte, dan merkt hij dat na het opstarten alsnog.
 
-[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fnl_alert_thuis.yaml)
+[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fboonstraworks%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Fnl_alert_thuis.yaml)
 
 Let op: dit vervangt het NL-Alert op je telefoon niet. 112hier haalt de alerts elke twee
 minuten op uit de openbare lijst van de overheid, en de integratie kijkt ook elke twee
@@ -202,7 +202,7 @@ rekent uit of een **voelbare** beving (vanaf magnitude 2,0) dicht bij je huis la
 De blueprint **Aardbeving in de buurt** stuurt je een bericht met de magnitude,
 de plaats en de afstand, en kan lampen of een scène inschakelen.
 
-[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Faardbeving_in_de_buurt.yaml)
+[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fboonstraworks%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Faardbeving_in_de_buurt.yaml)
 
 Let op: dit is geen officiële bron. Voor het laatste nieuws en advies bij een
 beving kijk je op [knmi.nl](https://www.knmi.nl/nederland-nu/seismologie/aardbevingen).
@@ -215,12 +215,12 @@ Nodig: Home Assistant 2024.8 of nieuwer.
 
 **Via HACS** (aanbevolen)
 
-[![Openen in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=stevenb211&repository=homeassistant-112hier&category=integration)
+[![Openen in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=boonstraworks&repository=homeassistant-112hier&category=integration)
 
 Met de knop hierboven gaat het in één keer. Liever met de hand:
 
 1. HACS → ⋮ (rechtsboven) → *Aangepaste repositories*
-2. Plak `https://github.com/stevenb211/homeassistant-112hier`, kies type *Integratie* en klik *Toevoegen*
+2. Plak `https://github.com/boonstraworks/homeassistant-112hier`, kies type *Integratie* en klik *Toevoegen*
 3. Zoek op "112hier", klik *Downloaden* en herstart Home Assistant
 4. Instellingen → Apparaten & diensten → Integratie toevoegen → **112hier**
 
@@ -234,7 +234,7 @@ HACS kijkt zelf of er een nieuwe versie is. Is die er, dan staat bovenaan
 *Instellingen* een melding "Update beschikbaar" voor 112hier, met wat er
 veranderd is. Klik op *Bijwerken*, herstart Home Assistant en ververs je
 browser (Ctrl+F5), zodat ook de nieuwste dashboardkaart wordt geladen. Wat er
-per versie veranderde staat bij de [releases](https://github.com/stevenb211/homeassistant-112hier/releases).
+per versie veranderde staat bij de [releases](https://github.com/boonstraworks/homeassistant-112hier/releases).
 
 Van 1.3 naar 1.4: had je een gebied én je eigen post ingesteld, dan kreeg je
 tot nu toe alleen de oproepen van je post binnen dat gebied. Vanaf 1.4 krijg je,
@@ -260,7 +260,7 @@ het gebied dan leeg.
 | Spoed in de buurt | binnen hoeveel km een spoedmelding *Spoed in de buurt* aanzet |
 | Hoe vaak kijken | standaard elke 30 seconden |
 
-![Je post zoeken op naam en de pagers aanvinken](https://raw.githubusercontent.com/stevenb211/homeassistant-112hier/main/docs/post-kiezen.jpg)
+![Je post zoeken op naam en de pagers aanvinken](https://raw.githubusercontent.com/boonstraworks/homeassistant-112hier/main/docs/post-kiezen.jpg)
 
 Laat je alles leeg, dan krijg je heel Nederland. Dat zijn er zo'n 4.000 per dag —
 kies op zijn minst een provincie of regio.
@@ -406,7 +406,7 @@ voor het opruimen van de oude statistiek (vóór Home Assistant 2024.10:
 
 **Meldingen van buiten je gebied** — zie [Waarom zie ik deze melding?](#waarom-zie-ik-deze-melding)
 
-Iets anders? Meld het bij de [issues](https://github.com/stevenb211/homeassistant-112hier/issues).
+Iets anders? Meld het bij de [issues](https://github.com/boonstraworks/homeassistant-112hier/issues).
 
 ## De feed zelf
 
