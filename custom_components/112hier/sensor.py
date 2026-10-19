@@ -11,6 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .aardbevingen import AardbevingCoordinator
 from .const import ATTRIBUTIE, DIENST_ICOON, DOMAIN, GEEN_DIENST_ICOON, SPOED_CODES
 from .coordinator import HierCoordinator
 from .nlalert import NlAlertCoordinator
@@ -21,12 +22,14 @@ async def async_setup_entry(
 ) -> None:
     coordinator: HierCoordinator = hass.data[DOMAIN][entry.entry_id]
     nla: NlAlertCoordinator = hass.data[f"{DOMAIN}_nla"][entry.entry_id]
+    aardb: AardbevingCoordinator = hass.data[f"{DOMAIN}_aardbeving"][entry.entry_id]
     async_add_entities(
         [
             LaatsteMelding(coordinator, entry),
             AantalMeldingen(coordinator, entry),
             LaatsteIncident(coordinator, entry),
             LaatsteNlAlert(nla, entry),
+            LaatsteAardbeving(aardb, entry),
         ]
     )
 
@@ -302,4 +305,59 @@ class LaatsteNlAlert(CoordinatorEntity[NlAlertCoordinator], SensorEntity):
             # Staat deze op je kaart, ver van huis? Dan is dat geen melding uit
             # je gebied: dit is het laatste NL-Alert van heel Nederland.
             "filter_reden": "landelijk: het laatste NL-Alert in heel Nederland, niet gefilterd op jouw gebied",
+        }
+
+
+class LaatsteAardbeving(CoordinatorEntity[AardbevingCoordinator], SensorEntity):
+    """De meest recente aardbeving in en rond Nederland, met magnitude en plaats.
+
+    Landelijk, niet op je gebied gefilterd: een beving is zeldzaam en wie er een
+    voelt wil weten wat het was. Of hij dicht bij jou lag staat in "voor_jou" en
+    "afstand_km" — en in de schakelaar "Voelbare aardbeving in de buurt". De
+    waarde is de magnitude; de rest (plaats, diepte, soort) staat in de attributen.
+    """
+
+    _attr_has_entity_name = True
+    _attr_attribution = ATTRIBUTIE
+    _attr_icon = "mdi:pulse"
+    _attr_translation_key = "laatste_aardbeving"
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: AardbevingCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_aardbeving"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+
+    @property
+    def available(self) -> bool:
+        # Niet super().available: die wordt bij één mislukte ronde al onwaar.
+        return self.coordinator.bruikbaar
+
+    @property
+    def native_value(self) -> float | None:
+        bevingen = self.coordinator.bevingen
+        return bevingen[0].get("magnitude") if bevingen else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        bevingen = self.coordinator.bevingen
+        if not bevingen:
+            return {}
+        b = bevingen[0]
+        return {
+            "id": b.get("id"),
+            "magnitude": b.get("magnitude"),
+            "magtype": b.get("magtype"),
+            "plaats": b.get("plaats"),
+            # 'earthquake' (natuurlijk) of 'induced' (bv. gaswinning).
+            "soort": b.get("soort"),
+            "voelbaar": b.get("voelbaar"),
+            "voor_jou": b.get("voor_jou"),
+            "afstand_km": b.get("afstand_km"),
+            "diepte_km": b.get("diepte_km"),
+            "tijd": b.get("tijd"),
+            "latitude": b.get("lat"),
+            "longitude": b.get("lon"),
+            "url": b.get("url"),
+            "filter_reden": "landelijk: de laatste beving in en rond Nederland, niet gefilterd op jouw gebied",
         }

@@ -105,6 +105,9 @@
       },
       "laatste_nl_alert": {
         "name": "Latest NL-Alert"
+      },
+      "laatste_aardbeving": {
+        "name": "Latest earthquake"
       }
     },
     "binary_sensor": {
@@ -113,6 +116,9 @@
       },
       "nl_alert_thuis": {
         "name": "NL-Alert for your location"
+      },
+      "voelbare_beving_in_de_buurt": {
+        "name": "Felt earthquake nearby"
       },
       "ontvangst": {
         "name": "112hier reception"

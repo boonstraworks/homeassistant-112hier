@@ -32,6 +32,7 @@ from .const import (
     DOMAIN,
     MIN_INTERVAL_SECONDEN,
 )
+from .aardbevingen import AardbevingCoordinator
 from .coordinator import HierCoordinator
 from .filters import Filter, lijst
 from .nlalert import NlAlertCoordinator
@@ -162,6 +163,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await nla.async_refresh()
     hass.data.setdefault(f"{DOMAIN}_nla", {})[entry.entry_id] = nla
+
+    # Aardbevingen lopen ook los van de meldingen. Ze komen zelden; een fout of
+    # een oudere 112hier zonder deze lijst mag het opzetten niet tegenhouden —
+    # dan blijven die twee entiteiten gewoon leeg.
+    aardb = AardbevingCoordinator(
+        hass, inst.get(CONF_BASIS) or DEFAULT_BASIS, user_agent=f"homeassistant-112hier/{integratie.version}"
+    )
+    await aardb.async_refresh()
+    hass.data.setdefault(f"{DOMAIN}_aardbeving", {})[entry.entry_id] = aardb
     await _zorg_voor_kaart(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     # Bij het wijzigen van opties opnieuw laden, anders blijft het oude filter staan.
@@ -178,4 +188,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if ontladen:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         hass.data.get(f"{DOMAIN}_nla", {}).pop(entry.entry_id, None)
+        hass.data.get(f"{DOMAIN}_aardbeving", {}).pop(entry.entry_id, None)
     return ontladen

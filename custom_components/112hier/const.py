@@ -17,6 +17,13 @@ DEFAULT_INTERVAL = timedelta(seconds=30)
 MIN_INTERVAL_SECONDEN = 15
 # NL-Alerts komen een paar keer per week; elke twee minuten kijken is ruim genoeg.
 NLA_INTERVAL = timedelta(minutes=2)
+# De aardbevingen in en rond Nederland (KNMI seismologie, sinds 112hier oktober 2026).
+AARDBEVING_PAD = "/api/aardbevingen"
+# Aardbevingen zijn zeldzaam (een voelbare een stuk of tien per jaar); elke vijf
+# minuten kijken is ruim genoeg.
+AARDBEVING_INTERVAL = timedelta(minutes=5)
+# Binnen hoeveel kilometer van je huis een voelbare beving "in de buurt" telt.
+AARDBEVING_STRAAL_KM = 80
 
 CONF_BASIS = "basis"
 CONF_REGIOS = "regios"
@@ -69,5 +76,10 @@ EVENT_NL_ALERT = "112hier_nl_alert"
 # Als een incident in je gebied ontstaat of groter wordt ("opgeschaald").
 EVENT_INCIDENT = "112hier_incident"
 NIVEAU_ORDE = {"klein": 1, "middel": 2, "groot": 3}
+
+# Bij elke nieuwe aardbeving in/rond Nederland. Met "voelbaar" (vanaf magnitude
+# 2,0) en "voor_jou" (voelbaar én binnen AARDBEVING_STRAAL_KM van je huis).
+EVENT_AARDBEVING = "112hier_aardbeving"
+AARDBEVING_ICOON = "mdi:pulse"
 
 ATTRIBUTIE = "Gegevens van 112hier.nl"

@@ -1,0 +1,81 @@
+blueprint:
+  name: 112hier — Aardbeving in de buurt
+  description: >
+    Krijg een bericht zodra er een voelbare aardbeving dicht bij je huis was.
+
+    Werkt met de schakelaar "Voelbare aardbeving in de buurt" van de
+    112hier-integratie: die gaat aan bij een beving vanaf magnitude 2,0 binnen
+    ongeveer 80 km van de locatie uit je Home Assistant-instellingen. Het bericht
+    noemt de magnitude, de plaats en de afstand tot je huis. Je kunt er ook
+    lampen of een scène aan hangen.
+  domain: automation
+  source_url: https://github.com/stevenb211/homeassistant-112hier/blob/main/blueprints/automation/112hier/aardbeving_in_de_buurt.yaml
+  author: 112hier.nl
+
+  input:
+    schakelaar:
+      name: Aardbeving-schakelaar
+      description: De binary_sensor "Voelbare aardbeving in de buurt" van 112hier.
+      selector:
+        entity:
+          filter:
+            - integration: 112hier
+              domain: binary_sensor
+
+    waarheen:
+      name: Waar naartoe
+      description: De notify-dienst van je telefoon, bijvoorbeeld notify.mobile_app_telefoon_van_jan. Leeg laten = geen bericht.
+      default: ""
+      selector:
+        text:
+
+    extra:
+      name: Extra (optioneel)
+      description: Lampen, een scène, een script of een schakelaar die je bij een beving wilt inschakelen. Leeg laten = niets.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: [light, switch, scene, script]
+
+mode: single
+
+trigger:
+  # Zonder "from": ook "onbekend" of "niet beschikbaar" → "aan" telt mee, zodat
+  # je een beving vlak na een herstart niet mist. Alleen de stand telt.
+  - platform: state
+    entity_id: !input schakelaar
+    to: "on"
+
+variables:
+  waarheen: !input waarheen
+  extra: !input extra
+  schakelaar: !input schakelaar
+
+action:
+  - if:
+      - condition: template
+        value_template: "{{ extra | length > 0 }}"
+    then:
+      - action: homeassistant.turn_on
+        target:
+          entity_id: "{{ extra }}"
+  - if:
+      - condition: template
+        value_template: "{{ waarheen | length > 0 }}"
+    then:
+      - action: "{{ waarheen }}"
+        data:
+          title: "Aardbeving in de buurt"
+          message: >-
+            Voelbare aardbeving
+            {%- set m = state_attr(schakelaar, 'magnitude') %}{% if m is not none %} M{{ ('%.1f' | format(m)) | replace('.', ',') }}{% endif %}
+            {%- set p = state_attr(schakelaar, 'plaats') %}{% if p %} bij {{ p }}{% endif %}
+            {%- set d = state_attr(schakelaar, 'afstand_km') %}{% if d is not none %}, {{ d | round(0) | int }} km van huis{% endif %}.
+          data:
+            url: "{{ state_attr(schakelaar, 'url') }}"
+            clickAction: "{{ state_attr(schakelaar, 'url') }}"
+            importance: high
+            priority: high
+            ttl: 0

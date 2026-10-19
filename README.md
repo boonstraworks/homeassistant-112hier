@@ -28,6 +28,9 @@ opzoeken, geen regels in `configuration.yaml`.
   en toont de kaart "storing" in plaats van "rustig".
 - **NL-Alert voor jouw huis**, met het echte uitzendgebied. Het landelijke
   testbericht in juni en december zet niets in gang.
+- **Aardbevingen in en rond Nederland**, van het KNMI: een melding bij een
+  voelbare beving (vanaf magnitude 2,0) dicht bij huis — de gaswinningsbevingen
+  in Groningen, een tektonische klap in Limburg of net over de grens.
 - **Je kazerne zoeken op naam** in plaats van capcodes van negen cijfers
   overtypen.
 
@@ -69,7 +72,7 @@ geo_location_sources:
   - 112hier
 ```
 
-**Zeven entiteiten**
+**Negen entiteiten**
 
 | Entiteit | Waarde |
 |---|---|
@@ -79,6 +82,8 @@ geo_location_sources:
 | Spoed in de buurt | aan zolang er in het laatste kwartier een spoedmelding dichtbij was |
 | Laatste NL-Alert | het meest recente NL-Alert in Nederland, met status, adviezen en of het jouw huis raakte |
 | NL-Alert voor jouw locatie | aan zolang er een actief NL-Alert is waarvan het uitzendgebied jouw huis raakt |
+| Laatste aardbeving | de meest recente aardbeving in en rond Nederland (KNMI), met magnitude, plaats, diepte en of hij voelbaar was |
+| Voelbare aardbeving in de buurt | aan als er in het laatste uur een voelbare beving (vanaf magnitude 2,0) binnen ~80 km van je huis was |
 | Ontvangst 112hier | aan zolang de ontvanger van 112hier meldingen binnenkrijgt; uit bij een storing |
 
 De entiteit-id begint met de naam van je configuratie. Heet die "112 · Haaglanden",
@@ -177,6 +182,32 @@ Let op: dit vervangt het NL-Alert op je telefoon niet. 112hier haalt de alerts e
 minuten op uit de openbare lijst van de overheid, en de integratie kijkt ook elke twee
 minuten. Het kan dus een paar minuten duren; je telefoon krijgt ze direct. Die
 openbare lijst is niet officieel gedocumenteerd en heeft geen garantie.
+
+## Aardbevingen
+
+Het KNMI meet elke trilling in de bodem. 112hier haalt de catalogus op, laat de
+groevenschoten en explosies eruit en houdt de aardbevingen in en rond Nederland
+bij — de gaswinningsbevingen in Groningen, de tektonische bevingen in Limburg en
+net over de grens in België en Duitsland. De integratie kent je thuislocatie en
+rekent uit of een **voelbare** beving (vanaf magnitude 2,0) dicht bij je huis lag.
+
+- *Laatste aardbeving* toont de meest recente beving in en rond Nederland; in de
+  attributen staan `magnitude`, `plaats`, `diepte_km`, `soort` (`earthquake` of
+  `induced`), `voelbaar`, `voor_jou` en `afstand_km` (vanaf je huis).
+- *Voelbare aardbeving in de buurt* gaat aan bij een voelbare beving binnen
+  ongeveer 80 km van je huis, en na een uur vanzelf weer uit.
+- Het event `112hier_aardbeving` komt bij elke nieuwe beving, met `voelbaar` en
+  `voor_jou`. Hang hier je automatisering aan.
+
+De blueprint **Aardbeving in de buurt** stuurt je een bericht met de magnitude,
+de plaats en de afstand, en kan lampen of een scène inschakelen.
+
+[![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fstevenb211%2Fhomeassistant-112hier%2Fblob%2Fmain%2Fblueprints%2Fautomation%2F112hier%2Faardbeving_in_de_buurt.yaml)
+
+Let op: dit is geen officiële bron. Voor het laatste nieuws en advies bij een
+beving kijk je op [knmi.nl](https://www.knmi.nl/nederland-nu/seismologie/aardbevingen).
+112hier haalt de catalogus elke vijf minuten op; een beving verschijnt kort nadat
+het KNMI hem heeft bepaald.
 
 ## Installeren
 

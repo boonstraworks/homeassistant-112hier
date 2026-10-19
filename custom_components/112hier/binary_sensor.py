@@ -27,12 +27,17 @@ from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .aardbevingen import AardbevingCoordinator
 from .const import ATTRIBUTIE, CONF_SPOED_STRAAL, DOMAIN, SPOED_CODES
 from .coordinator import HierCoordinator
 from .nlalert import NlAlertCoordinator
 
 # Hoe lang de schakelaar aan blijft na een spoedmelding.
 AAN_MINUTEN = 15
+# Een aardbeving is één moment, geen toestand die loopt. We laten de schakelaar
+# daarom een uur aanstaan, lang genoeg om er een bericht of een scène aan te
+# hangen en om hem in de geschiedenis terug te zien.
+BEVING_AAN_MINUTEN = 60
 
 
 async def async_setup_entry(
@@ -42,10 +47,12 @@ async def async_setup_entry(
     inst = {**entry.data, **entry.options}
     straal = float(inst.get(CONF_SPOED_STRAAL) or 0)
     nla: NlAlertCoordinator = hass.data[f"{DOMAIN}_nla"][entry.entry_id]
+    aardb: AardbevingCoordinator = hass.data[f"{DOMAIN}_aardbeving"][entry.entry_id]
     async_add_entities(
         [
             SpoedInDeBuurt(coordinator, entry, straal),
             NlAlertThuis(nla, entry),
+            VoelbareBevingInDeBuurt(aardb, entry),
             Ontvangst(coordinator, entry),
         ]
     )
@@ -199,6 +206,90 @@ class NlAlertThuis(CoordinatorEntity[NlAlertCoordinator], BinarySensorEntity):
             "url": a.get("url"),
             "bron_url": a.get("bron_url"),
             "incident_url": (a.get("incident") or {}).get("url"),
+        }
+
+
+class VoelbareBevingInDeBuurt(
+    CoordinatorEntity[AardbevingCoordinator], BinarySensorEntity
+):
+    """Aan als er kort geleden een voelbare aardbeving dicht bij huis was.
+
+    "Dicht bij huis" is binnen ~80 km van de locatie uit de Home
+    Assistant-instellingen; "voelbaar" is vanaf magnitude 2,0. Gaat na een uur
+    vanzelf weer uit. Vooral in Groningen (de gaswinningsbevingen) iets om een
+    bericht of een scène aan te hangen.
+    """
+
+    _attr_has_entity_name = True
+    _attr_attribution = ATTRIBUTIE
+    _attr_translation_key = "voelbare_beving_in_de_buurt"
+    _attr_device_class = BinarySensorDeviceClass.VIBRATION
+    _attr_icon = "mdi:pulse"
+
+    def __init__(self, coordinator: AardbevingCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._tot: datetime | None = None
+        self._aanleiding: dict | None = None
+        self._timer = None
+        self._attr_unique_id = f"{entry.entry_id}_beving_dichtbij"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        for b in self.coordinator.bevingen:
+            if not b.get("voor_jou"):
+                continue
+            tijd = dt_util.parse_datetime(b.get("tijd") or "")
+            if not tijd:
+                continue
+            tot = tijd + timedelta(minutes=BEVING_AAN_MINUTEN)
+            if self._tot is None or tot > self._tot:
+                self._tot, self._aanleiding = tot, b
+                self._plan_uit(tot)
+            break
+        super()._handle_coordinator_update()
+
+    def _plan_uit(self, tot: datetime) -> None:
+        """Zelf plannen wanneer we weer uitgaan; anders blijft hij staan tot de
+        volgende beving, en dat kan maanden duren."""
+        if self._timer:
+            self._timer()
+
+        @callback
+        def _uit(_now) -> None:
+            self._timer = None
+            self.async_write_ha_state()
+
+        self._timer = async_track_point_in_time(self.hass, _uit, tot)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._timer:
+            self._timer()
+            self._timer = None
+
+    @property
+    def available(self) -> bool:
+        # Niet super().available: die wordt bij één mislukte ronde al onwaar.
+        return self.coordinator.bruikbaar
+
+    @property
+    def is_on(self) -> bool:
+        return self._tot is not None and dt_util.utcnow() < self._tot
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.is_on or not self._aanleiding:
+            return {}
+        b = self._aanleiding
+        return {
+            "magnitude": b.get("magnitude"),
+            "plaats": b.get("plaats"),
+            "soort": b.get("soort"),
+            "diepte_km": b.get("diepte_km"),
+            "afstand_km": b.get("afstand_km"),
+            "tijd": b.get("tijd"),
+            "tot": self._tot.isoformat() if self._tot else None,
+            "url": b.get("url"),
         }
 
 
