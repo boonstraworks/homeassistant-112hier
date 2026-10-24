@@ -31,10 +31,10 @@ const KLEUR = {
 };
 
 const ICOON = {
-  brandweer: 'mdi:fire-truck',
-  ambulance: 'mdi:ambulance',
-  politie: 'mdi:car-emergency',
-  knrm: 'mdi:ferry',
+  brandweer: 'mdi:fire',
+  ambulance: 'mdi:heart-pulse',
+  politie: 'mdi:police-badge',
+  knrm: 'mdi:lifebuoy',
 };
 
 /** "net nu", "4 min", "2 uur" — korter leest op een dashboard beter dan een klok. */

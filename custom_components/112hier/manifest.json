@@ -13,5 +13,5 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/boonstraworks/homeassistant-112hier/issues",
-  "version": "1.5.1"
+  "version": "1.5.2"
 }
