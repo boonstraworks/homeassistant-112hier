@@ -186,10 +186,14 @@ class HierCard extends HTMLElement {
       <div class="lijst">${rijen}</div>
     `);
 
-    this.shadowRoot.querySelectorAll('.rij').forEach((el) => {
-      el.addEventListener('click', () => {
+    this.shadowRoot.querySelectorAll('.rij.klikbaar').forEach((el) => {
+      const openen = () => {
         const doel = webUrl(el.dataset.url);
         if (doel) window.open(doel, '_blank', 'noopener');
+      };
+      el.addEventListener('click', openen);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openen(); }
       });
     });
   }
@@ -220,6 +224,7 @@ class HierCard extends HTMLElement {
 
   _rij(m) {
     const kleur = KLEUR[m.dienst] || '#64748b';
+    const icoon = ICOON[m.dienst];
     const plek = [m.straat, m.plaats].filter(Boolean).join(', ');
     const afstand = m.afstand_km != null ? `${m.afstand_km} km` : '';
     // Zes oproepen voor één brand: dat zie je hier aan "6 oproepen", met de
@@ -227,9 +232,12 @@ class HierCard extends HTMLElement {
     const actueel = m.incident && this._actueel ? (this._actueel[m.incident.id] || m.incident) : m.incident;
     const inc = actueel && actueel.oproepen > 1 ? actueel : null;
     const incLabel = inc ? `${inc.oproepen} oproepen${inc.niveau === 'groot' ? ' · grote inzet' : ''}` : '';
+    // Alleen rijen met een echt webadres zijn klikbaar: die krijgen cursor, hover en toetsenbordtoegang.
+    const klikbaar = !!webUrl(m.url);
     return `
-      <div class="rij${m.spoed ? ' spoed' : ''}" data-url="${veilig(m.url || '')}">
+      <div class="rij${m.spoed ? ' spoed' : ''}${klikbaar ? ' klikbaar' : ''}" data-url="${veilig(m.url || '')}"${klikbaar ? ' tabindex="0" role="link"' : ''}>
         <span class="streep" style="background:${kleur}"></span>
+        ${icoon ? `<ha-icon class="dienst-icoon" icon="${icoon}" style="color:${kleur}"></ha-icon>` : ''}
         <div class="inhoud">
           <div class="boven">
             ${m.urgentie ? `<span class="code" style="background:${kleur}">${veilig(m.urgentie)}</span>` : ''}
@@ -264,12 +272,15 @@ class HierCard extends HTMLElement {
         .lijst { display: flex; flex-direction: column; }
         .rij {
           display: flex; align-items: flex-start; gap: 10px;
-          padding: 9px 16px 9px 0; cursor: pointer;
+          padding: 9px 16px 9px 0; cursor: default;
           border-bottom: 1px solid var(--divider-color, #ececec);
         }
         .rij:last-child { border-bottom: none; }
-        .rij:hover { background: var(--secondary-background-color, #f7f7f7); }
+        .rij.klikbaar { cursor: pointer; }
+        .rij.klikbaar:hover { background: var(--secondary-background-color, #f7f7f7); }
+        .rij.klikbaar:focus-visible { outline: 2px solid var(--primary-color, #2563eb); outline-offset: -2px; }
         .streep { width: 4px; align-self: stretch; border-radius: 0 3px 3px 0; flex: 0 0 4px; }
+        .dienst-icoon { --mdc-icon-size: 18px; flex: 0 0 auto; margin-top: 1px; }
         .inhoud { flex: 1; min-width: 0; }
         .boven { display: flex; align-items: baseline; gap: 7px; }
         .code {
