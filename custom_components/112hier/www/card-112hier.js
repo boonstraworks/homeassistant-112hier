@@ -53,6 +53,16 @@ function veilig(s) {
   }[c]));
 }
 
+// Geeft de URL alleen terug als het een echt http(s)-webadres is; blokkeert o.a. javascript:-schema's uit een zelfingestelde feed.
+function webUrl(u) {
+  try {
+    const ontleed = new URL(String(u));
+    return (ontleed.protocol === 'https:' || ontleed.protocol === 'http:') ? ontleed.href : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 class HierCard extends HTMLElement {
   static getStubConfig(hass) {
     // Bij "kaart toevoegen" meteen de juiste sensor invullen, anders staat de
@@ -178,7 +188,8 @@ class HierCard extends HTMLElement {
 
     this.shadowRoot.querySelectorAll('.rij').forEach((el) => {
       el.addEventListener('click', () => {
-        if (el.dataset.url) window.open(el.dataset.url, '_blank', 'noopener');
+        const doel = webUrl(el.dataset.url);
+        if (doel) window.open(doel, '_blank', 'noopener');
       });
     });
   }
